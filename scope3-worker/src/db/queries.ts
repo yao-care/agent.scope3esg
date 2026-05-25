@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
-import { tenants } from './schema';
+import { tenants, supplierTokens } from './schema';
 
 interface TenantInput {
   installationId: number;
@@ -26,4 +26,40 @@ export async function getTenant(db: D1Database, installationId: number) {
     .where(eq(tenants.installationId, installationId))
     .limit(1);
   return rows[0] ?? null;
+}
+
+interface SupplierTokenInput {
+  token:      string;
+  org:        string;
+  supplierId: string;
+  expiresAt:  string;
+}
+
+export async function insertSupplierToken(db: D1Database, input: SupplierTokenInput): Promise<void> {
+  const client = drizzle(db);
+  await client.insert(supplierTokens).values({
+    token:      input.token,
+    org:        input.org,
+    supplierId: input.supplierId,
+    expiresAt:  input.expiresAt,
+    createdAt:  new Date().toISOString(),
+  });
+}
+
+export async function getSupplierToken(db: D1Database, token: string) {
+  const client = drizzle(db);
+  const rows = await client
+    .select()
+    .from(supplierTokens)
+    .where(eq(supplierTokens.token, token))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listSupplierTokensByOrg(db: D1Database, org: string) {
+  const client = drizzle(db);
+  return client
+    .select()
+    .from(supplierTokens)
+    .where(eq(supplierTokens.org, org));
 }
