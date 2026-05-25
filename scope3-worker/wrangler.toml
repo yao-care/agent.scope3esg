@@ -1,0 +1,19 @@
+name = "scope3-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "scope3"
+database_id = "REPLACE_AFTER_wrangler_d1_create"
+
+[vars]
+GITHUB_APP_ID = ""
+
+# Secrets（set via: wrangler secret put <KEY>）:
+# GITHUB_APP_PRIVATE_KEY
+# GITHUB_WEBHOOK_SECRET
+# GITHUB_APP_CLIENT_ID
+# GITHUB_APP_CLIENT_SECRET
+# RESEND_API_KEY
