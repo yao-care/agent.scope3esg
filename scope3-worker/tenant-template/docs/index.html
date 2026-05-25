@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scope 3 碳排盤點儀表板</title>
+<style>
+  :root { --fg:#1a1a1a; --muted:#666; --accent:#0070f3; --bar:#0070f3; --bg:#f7f8fa; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; margin: 0; background: var(--bg); color: var(--fg); }
+  header { background: #fff; padding: 24px; border-bottom: 1px solid #e5e7eb; }
+  header h1 { margin: 0; font-size: 1.4rem; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; }
+  .card .label { color: var(--muted); font-size: .82rem; }
+  .card .value { font-size: 1.8rem; font-weight: 700; margin-top: 6px; }
+  .card .unit { font-size: .9rem; color: var(--muted); font-weight: 400; }
+  section { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-top: 24px; }
+  section h2 { margin: 0 0 16px; font-size: 1.05rem; }
+  .bar-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; font-size: .88rem; }
+  .bar-row .name { width: 160px; flex-shrink: 0; color: var(--muted); }
+  .bar-track { flex: 1; background: #eef1f5; border-radius: 4px; overflow: hidden; height: 22px; }
+  .bar-fill { height: 100%; background: var(--bar); }
+  .bar-row .num { width: 110px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); text-align: center; padding: 40px; }
+  footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 24px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Scope 3 碳排盤點儀表板</h1>
+  <p id="subtitle">載入中…</p>
+</header>
+<main>
+  <div class="kpis" id="kpis"></div>
+  <section><h2>各類別排放量（kgCO₂e）</h2><div id="by-category"></div></section>
+  <section><h2>排放前 10 供應商（kgCO₂e）</h2><div id="top-suppliers"></div></section>
+  <section><h2>各活動類型排放量（kgCO₂e）</h2><div id="by-activity"></div></section>
+</main>
+<footer>資料來源：data/submissions.json ｜ 由 Scope3 GitHub App 自動產生</footer>
+<script type="module" src="./dashboard.js"></script>
+</body>
+</html>
