@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run",
+    "test": "pnpm run test:cf && pnpm run test:node",
+    "test:cf": "vitest run",
+    "test:node": "vitest run --config vitest.middleware.config.ts",
     "dev": "wrangler dev --local",
     "deploy": "wrangler deploy",
     "build:templates": "node scripts/build-templates.mjs"

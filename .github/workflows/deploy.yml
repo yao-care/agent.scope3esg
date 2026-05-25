@@ -23,6 +23,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: scope3-worker
 
+      - name: Build tenant templates
+        run: pnpm run build:templates
+        working-directory: scope3-worker
+
       - run: pnpm test
         working-directory: scope3-worker
 
