@@ -1,0 +1,30 @@
+name: Generate Scope 3 Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 1 * *'
+
+permissions:
+  contents: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate reports
+        id: gen
+        run: node scripts/report.mjs
+      - name: Create Release with report assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.gen.outputs.tag }}" \
+            "${{ steps.gen.outputs.csv_path }}" \
+            "${{ steps.gen.outputs.md_path }}" \
+            --title "Scope 3 Report ${{ steps.gen.outputs.tag }}" \
+            --notes-file "${{ steps.gen.outputs.md_path }}"
