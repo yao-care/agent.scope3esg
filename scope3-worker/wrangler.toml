@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "scope3"
-database_id = "REPLACE_AFTER_wrangler_d1_create"
+database_id = "b49b85a5-b624-4b4f-bc59-85454aa6077f"
 
 [vars]
 GITHUB_APP_ID = ""
