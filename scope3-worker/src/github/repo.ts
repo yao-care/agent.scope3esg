@@ -1,4 +1,5 @@
 import type { Octokit } from '@octokit/core';
+import { TENANT_FILES } from '../templates/generated';
 
 const LABELS = [
   { name: 'status:submitted',   color: '0075ca', description: '已提交，等待審核' },
@@ -15,28 +16,9 @@ const LABELS = [
   })),
 ];
 
-const CONFIG_YML = `inventory_year: ${new Date().getFullYear()}
-enabled_categories: [1, 4, 6, 7, 11]
-
-suppliers: []
-  # - id: SUP001
-  #   name: 供應商名稱
-  #   contact: esg@supplier.com
-  #   pull_api: null
-  #   pull_schedule: null
-`;
-
-const ISSUE_TEMPLATE = `name: Scope 3 Data Submission
-description: 供應商碳排資料提交
-body:
-  - type: textarea
-    id: data
-    attributes:
-      label: Submission Data (JSON)
-      description: 由系統自動填入，請勿手動編輯
-    validations:
-      required: true
-`;
+function toBase64(text: string): string {
+  return btoa(unescape(encodeURIComponent(text)));
+}
 
 export async function createTenantRepo(octokit: Octokit, org: string): Promise<string> {
   const { data: repo } = await octokit.request('POST /orgs/{org}/repos', {
@@ -47,21 +29,15 @@ export async function createTenantRepo(octokit: Octokit, org: string): Promise<s
     auto_init:   false,
   });
 
-  await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
-    owner:   org,
-    repo:    'scope3-inventory',
-    path:    'config.yml',
-    message: 'chore: initialize Scope 3 inventory',
-    content: btoa(unescape(encodeURIComponent(CONFIG_YML))),
-  });
-
-  await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
-    owner:   org,
-    repo:    'scope3-inventory',
-    path:    '.github/ISSUE_TEMPLATE/scope3-submission.yml',
-    message: 'chore: add issue template',
-    content: btoa(unescape(encodeURIComponent(ISSUE_TEMPLATE))),
-  });
+  for (const [path, content] of Object.entries(TENANT_FILES)) {
+    await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
+      owner:   org,
+      repo:    'scope3-inventory',
+      path,
+      message: `chore: add ${path}`,
+      content: toBase64(content),
+    });
+  }
 
   for (const label of LABELS) {
     await octokit.request('POST /repos/{owner}/{repo}/labels', {

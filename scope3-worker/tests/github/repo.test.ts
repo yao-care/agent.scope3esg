@@ -1,37 +1,49 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTenantRepo } from '../../src/github/repo';
+import { TENANT_FILES } from '../../src/templates/generated';
 
-const mockOctokit = {
-  request: vi.fn(),
-};
+function makeOctokit() {
+  return {
+    request: vi.fn(async (route: string) => {
+      if (route === 'POST /orgs/{org}/repos') return { data: { node_id: 'R_test123' } };
+      return { data: {} };
+    }),
+  };
+}
 
 describe('createTenantRepo', () => {
+  let octokit: ReturnType<typeof makeOctokit>;
   beforeEach(() => {
-    vi.clearAllMocks();
+    octokit = makeOctokit();
   });
 
-  it('creates repo, commits config.yml, and creates labels', async () => {
-    mockOctokit.request
-      .mockResolvedValueOnce({ data: { node_id: 'R_abc123' } }) // POST /orgs/{org}/repos
-      .mockResolvedValue({ data: {} }); // all subsequent calls
-
-    const nodeId = await createTenantRepo(mockOctokit as any, 'test-org');
-
-    expect(nodeId).toBe('R_abc123');
-
-    expect(mockOctokit.request).toHaveBeenCalledWith(
+  it('creates the repo and returns its node_id', async () => {
+    const nodeId = await createTenantRepo(octokit as any, 'acme-corp');
+    expect(nodeId).toBe('R_test123');
+    expect(octokit.request).toHaveBeenCalledWith(
       'POST /orgs/{org}/repos',
-      expect.objectContaining({ org: 'test-org', name: 'scope3-inventory' }),
+      expect.objectContaining({ org: 'acme-corp', name: 'scope3-inventory' }),
     );
+  });
 
-    expect(mockOctokit.request).toHaveBeenCalledWith(
-      'PUT /repos/{owner}/{repo}/contents/{path}',
-      expect.objectContaining({ path: 'config.yml' }),
+  it('commits every tenant-template file via PUT contents', async () => {
+    await createTenantRepo(octokit as any, 'acme-corp');
+    const putCalls = octokit.request.mock.calls.filter(
+      (c) => c[0] === 'PUT /repos/{owner}/{repo}/contents/{path}',
     );
+    const committedPaths = putCalls.map((c) => c[1].path).sort();
+    expect(committedPaths).toEqual(Object.keys(TENANT_FILES).sort());
+    expect(committedPaths).toContain('.github/workflows/validate.yml');
+    expect(committedPaths).toContain('.github/workflows/calculate.yml');
+    expect(committedPaths).toContain('scripts/lib.mjs');
+    expect(committedPaths).toContain('data/emission-factors.json');
+  });
 
-    const labelCalls = mockOctokit.request.mock.calls.filter(
-      ([route]: [string]) => route === 'POST /repos/{owner}/{repo}/labels',
+  it('creates all 22 labels', async () => {
+    await createTenantRepo(octokit as any, 'acme-corp');
+    const labelCalls = octokit.request.mock.calls.filter(
+      (c) => c[0] === 'POST /repos/{owner}/{repo}/labels',
     );
-    expect(labelCalls.length).toBeGreaterThanOrEqual(20);
+    expect(labelCalls.length).toBe(22);
   });
 });
