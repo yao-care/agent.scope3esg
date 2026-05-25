@@ -13,5 +13,6 @@ export default defineConfig({
   ],
   test: {
     globalSetup: './tests/helpers/global-setup.ts',
+    include: ['tests/db/**/*.test.ts', 'tests/handlers/**/*.test.ts', 'tests/routes/**/*.test.ts'],
   },
 });
