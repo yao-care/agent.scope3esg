@@ -58,6 +58,19 @@ describe('calculateCo2e', () => {
     const f = factors[0];
     expect(calculateCo2e(5, 'kg', f)).toBeNull();
   });
+  it('computes water in ton directly (denominator matches)', () => {
+    const water = { factor_id: 'TW_WATER_2025', year: 2025, activity_type: 'water', value: 0.194, unit: 'kgCO2e/ton', region: 'TW' };
+    expect(calculateCo2e(100, 'ton', water)).toBeCloseTo(19.4);
+  });
+});
+
+describe('validateUnit (water uses ton only)', () => {
+  it('accepts water in ton', () => {
+    expect(validateUnit('water', 'ton').ok).toBe(true);
+  });
+  it('rejects water in m3 (not supported, would fail to convert)', () => {
+    expect(validateUnit('water', 'm3').ok).toBe(false);
+  });
 });
 
 describe('detectOutlier', () => {

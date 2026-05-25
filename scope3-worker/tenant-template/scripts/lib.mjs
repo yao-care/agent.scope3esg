@@ -2,11 +2,14 @@
 // 純驗證/計算演算法。同時被 GitHub Actions runner 與 worker 單元測試使用。
 // 無外部相依，僅用 Node 內建能力。
 
+// 各活動類型的合法單位。需與排放係數 (emission-factors.json) 的分母單位、
+// 以及 Web Form (submit.ts) 的單位選項保持一致，否則計算階段會無法換算。
+// water 以公噸 (ton) 計：水密度 1，1 m³ ≈ 1 公噸，故係數值不變。
 export const UNIT_RULES = {
   electricity: ['kWh'],
   natural_gas: ['Nm3'],
   diesel:      ['L'],
-  water:       ['ton', 'm3'],
+  water:       ['ton'],
   waste:       ['ton', 'kg'],
   product:     ['pcs', 'kg', 'ton'],
   transport:   ['km'],

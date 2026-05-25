@@ -36,7 +36,7 @@ function formHtml(org: string, token: string, supplierId: string): string {
   <input name="period" placeholder="2025-Q1" required pattern="\\d{4}-Q[1-4]">
 
   <label>活動類型</label>
-  <select name="activity_type" required>
+  <select name="activity_type" id="activity_type" required>
     <option value="electricity">電力 (Electricity)</option>
     <option value="natural_gas">天然氣 (Natural Gas)</option>
     <option value="diesel">柴油 (Diesel)</option>
@@ -53,15 +53,7 @@ function formHtml(org: string, token: string, supplierId: string): string {
     </div>
     <div>
       <label>單位</label>
-      <select name="unit" required>
-        <option value="kWh">kWh</option>
-        <option value="Nm3">Nm3</option>
-        <option value="L">公升 (L)</option>
-        <option value="ton">公噸 (ton)</option>
-        <option value="kg">公斤 (kg)</option>
-        <option value="pcs">件 (pcs)</option>
-        <option value="km">公里 (km)</option>
-      </select>
+      <select name="unit" id="unit" required></select>
     </div>
   </div>
 
@@ -70,6 +62,29 @@ function formHtml(org: string, token: string, supplierId: string): string {
 
   <button type="submit">提交資料</button>
 </form>
+<script>
+  // 單位選項依活動類型連動，須與後端 lib.mjs 的 UNIT_RULES 一致，
+  // 避免供應商提交無法計算的單位組合。以字串拼接避免與 server 端 template literal 衝突。
+  var ACTIVITY_UNITS = {
+    electricity: [['kWh', 'kWh']],
+    natural_gas: [['Nm3', 'Nm3']],
+    diesel:      [['L', '公升 (L)']],
+    water:       [['ton', '公噸 (ton)']],
+    waste:       [['ton', '公噸 (ton)'], ['kg', '公斤 (kg)']],
+    product:     [['pcs', '件 (pcs)'], ['kg', '公斤 (kg)'], ['ton', '公噸 (ton)']],
+    transport:   [['km', '公里 (km)']]
+  };
+  var actEl = document.getElementById('activity_type');
+  var unitEl = document.getElementById('unit');
+  function syncUnits() {
+    var opts = ACTIVITY_UNITS[actEl.value] || [];
+    unitEl.innerHTML = opts.map(function (o) {
+      return '<option value="' + o[0] + '">' + o[1] + '</option>';
+    }).join('');
+  }
+  actEl.addEventListener('change', syncUnits);
+  syncUnits();
+</script>
 </body>
 </html>`;
 }

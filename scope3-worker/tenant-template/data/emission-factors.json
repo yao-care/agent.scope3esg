@@ -5,7 +5,7 @@
     { "factor_id": "TW_ELEC_2025", "source": "Taiwan EPA", "year": 2025, "activity_type": "electricity", "value": 0.509, "unit": "kgCO2e/kWh", "region": "TW" },
     { "factor_id": "TW_NATGAS_2025", "source": "IPCC 2006", "year": 2025, "activity_type": "natural_gas", "value": 1.879, "unit": "kgCO2e/Nm3", "region": "TW" },
     { "factor_id": "TW_DIESEL_2025", "source": "IPCC 2006", "year": 2025, "activity_type": "diesel", "value": 2.606, "unit": "kgCO2e/L", "region": "TW" },
-    { "factor_id": "TW_WATER_2025", "source": "Taiwan Water Corp", "year": 2025, "activity_type": "water", "value": 0.194, "unit": "kgCO2e/m3", "region": "TW" },
+    { "factor_id": "TW_WATER_2025", "source": "Taiwan Water Corp", "year": 2025, "activity_type": "water", "value": 0.194, "unit": "kgCO2e/ton", "region": "TW" },
     { "factor_id": "TW_WASTE_2025", "source": "DEFRA 2024", "year": 2025, "activity_type": "waste", "value": 0.021, "unit": "kgCO2e/kg", "region": "TW" },
     { "factor_id": "GLOBAL_TRANSPORT_2025", "source": "GLEC", "year": 2025, "activity_type": "transport", "value": 0.12, "unit": "kgCO2e/km", "region": "GLOBAL" },
     { "factor_id": "GLOBAL_PRODUCT_2025", "source": "ecoinvent", "year": 2025, "activity_type": "product", "value": 2.0, "unit": "kgCO2e/kg", "region": "GLOBAL" }
