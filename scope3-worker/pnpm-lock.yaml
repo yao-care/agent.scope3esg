@@ -11,6 +11,9 @@ importers:
       '@octokit/app':
         specifier: ^16.1.2
         version: 16.1.2
+      '@octokit/core':
+        specifier: ^7.0.6
+        version: 7.0.6
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@cloudflare/workers-types@4.20260525.1)
