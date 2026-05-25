@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "dev": "wrangler dev --local",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "build:templates": "node scripts/build-templates.mjs"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,10 @@
+name: Scope 3 Data Submission
+description: 供應商碳排資料提交
+body:
+  - type: textarea
+    id: data
+    attributes:
+      label: Submission Data (JSON)
+      description: 由系統自動填入，請勿手動編輯
+    validations:
+      required: true
