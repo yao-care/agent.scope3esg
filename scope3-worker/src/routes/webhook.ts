@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { verifyGitHubWebhook } from '../middleware/github-webhook';
 import { handleInstallation } from '../handlers/installation';
+import { handleConfigPush } from '../handlers/config-push';
 
 const webhook = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -14,6 +15,9 @@ webhook.post('/', async (c, next) => {
   switch (event) {
     case 'installation':
       await handleInstallation(c.env, body);
+      break;
+    case 'push':
+      await handleConfigPush(c.env, body);
       break;
     case 'ping':
       break;
