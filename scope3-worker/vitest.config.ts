@@ -1,12 +1,17 @@
 import { defineConfig } from 'vitest/config';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-pool-workers';
+import path from 'path';
 
 export default defineConfig({
-  test: {
-    pool: '@cloudflare/vitest-pool-workers',
-    poolOptions: {
-      workers: {
-        wrangler: { configPath: './wrangler.toml' },
+  plugins: [
+    cloudflareTest({
+      wrangler: { configPath: './wrangler.toml' },
+      miniflare: {
+        d1Databases: ['DB'],
       },
-    },
+    }),
+  ],
+  test: {
+    globalSetup: './tests/helpers/global-setup.ts',
   },
 });
