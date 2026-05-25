@@ -1,0 +1,9 @@
+inventory_year: 2025
+enabled_categories: [1, 4, 6, 7, 11]
+
+suppliers: []
+  # - id: SUP001
+  #   name: 供應商名稱
+  #   contact: esg@supplier.com
+  #   pull_api: null
+  #   pull_schedule: null
