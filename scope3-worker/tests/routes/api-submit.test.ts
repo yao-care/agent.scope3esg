@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { env } from 'cloudflare:test';
 import { applyMigrations } from '../helpers/migrate';
 import { insertSupplierToken } from '../../src/db/queries';
-import app from '../../src/index';
+import { app } from '../../src/index';
 
 vi.mock('../../src/handlers/submission', () => ({
   processSubmission: vi.fn().mockResolvedValue({ success: true, issueNumber: 7 }),
