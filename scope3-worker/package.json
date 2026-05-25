@@ -15,11 +15,14 @@
   "dependencies": {
     "@octokit/app": "^16.1.2",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.23"
+    "hono": "^4.12.23",
+    "js-yaml": "^4.1.1",
+    "resend": "^6.12.3"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.9",
     "@cloudflare/workers-types": "^4.20260525.1",
+    "@types/js-yaml": "^4.0.9",
     "drizzle-kit": "^0.31.10",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7",

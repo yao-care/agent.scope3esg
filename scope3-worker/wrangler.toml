@@ -8,8 +8,22 @@ binding = "DB"
 database_name = "scope3"
 database_id = "b49b85a5-b624-4b4f-bc59-85454aa6077f"
 
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "scope3-files"
+
+[[queues.producers]]
+binding = "SUBMISSION_QUEUE"
+queue = "scope3-pull-jobs"
+
+[[queues.consumers]]
+queue = "scope3-pull-jobs"
+max_batch_size = 10
+max_batch_timeout = 30
+
 [vars]
 GITHUB_APP_ID = ""
+WORKER_BASE_URL = "https://scope3-worker.lightman-chang.workers.dev"
 
 # Secrets（set via: wrangler secret put <KEY>）:
 # GITHUB_APP_PRIVATE_KEY
