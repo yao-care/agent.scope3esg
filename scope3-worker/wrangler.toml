@@ -22,13 +22,10 @@ max_batch_size = 10
 max_batch_timeout = 30
 
 [vars]
-GITHUB_APP_ID = ""
+GITHUB_APP_ID = "3854967"
 WORKER_BASE_URL = "https://scope3-worker.lightman-chang.workers.dev"
-RESEND_API_KEY = "re_placeholder"
 
 # Secrets（set via: wrangler secret put <KEY>）:
-# GITHUB_APP_PRIVATE_KEY
-# GITHUB_WEBHOOK_SECRET
-# GITHUB_APP_CLIENT_ID
-# GITHUB_APP_CLIENT_SECRET
-# RESEND_API_KEY
+# GITHUB_APP_PRIVATE_KEY   ← 必要（App 設定頁產生 .pem）
+# GITHUB_WEBHOOK_SECRET    ← 必要（App webhook secret）
+# RESEND_API_KEY           ← 選用；未設則略過寄送供應商邀請信
