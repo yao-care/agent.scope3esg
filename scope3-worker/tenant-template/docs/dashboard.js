@@ -36,7 +36,7 @@ function renderKpis(k) {
     { label: '涵蓋類別數', value: Object.keys(k.byCategory).length, unit: '類' },
   ];
   document.getElementById('kpis').innerHTML = cards
-    .map((c) => `<div class="card"><div class="label">${c.label}</div><div class="value">${c.value} <span class="unit">${c.unit}</span></div></div>`)
+    .map((c) => `<div class="card"><div class="muted">${c.label}</div><div class="kpi-value">${c.value} <span class="kpi-unit">${c.unit}</span></div></div>`)
     .join('');
 }
 
