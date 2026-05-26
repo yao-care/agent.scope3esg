@@ -9,6 +9,7 @@ import { readTenantConfig } from '../github/config';
 import { syncConfig } from '../handlers/config-push';
 import { configToYaml } from '../lib/config-yaml';
 import { generateFormUrl } from '../lib/tokens';
+import { aggregateKpis } from '../lib/aggregate';
 
 const adminApi = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -123,6 +124,26 @@ adminApi.get('/:org/overview', async (c) => {
   }));
 
   return c.json({ inventory_year: config.inventory_year, enabled_categories: config.enabled_categories, suppliers });
+});
+
+adminApi.get('/:org/dashboard-data', async (c) => {
+  const { org } = c.req.param();
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  let submissions: any[] = [];
+  try {
+    const res = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { owner: org, repo: 'scope3-inventory', path: 'data/submissions.json' });
+    const data = res?.data as { content?: string } | undefined;
+    if (data?.content) {
+      // 讀 base64 內容並用 TextDecoder 解 UTF-8（不可用 atob 直接當字串，會壞中文）。
+      const bytes = Uint8Array.from(atob(data.content.replace(/\n/g, '')), (ch) => ch.charCodeAt(0));
+      const json = new TextDecoder('utf-8').decode(bytes);
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed)) submissions = parsed;
+    }
+  } catch { /* 檔案不存在或無法讀，視為空 */ }
+  return c.json(aggregateKpis(submissions));
 });
 
 export default adminApi;

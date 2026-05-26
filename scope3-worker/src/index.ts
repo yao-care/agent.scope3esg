@@ -10,6 +10,7 @@ import adminRoute      from './routes/admin';
 import adminApiRoute   from './routes/admin-api';
 import filesRoute      from './routes/files';
 import assetsRoute     from './routes/assets';
+import dashboardRoute  from './routes/dashboard';
 import { handleQueue } from './queue/consumer';
 import { handleScheduled } from './handlers/scheduled';
 
@@ -25,6 +26,7 @@ app.route('/admin',         adminRoute);
 app.route('/api/v1/admin',  adminApiRoute);
 app.route('/files',         filesRoute);
 app.route('/assets',        assetsRoute);
+app.route('/dashboard',     dashboardRoute);
 
 export { app };
 
