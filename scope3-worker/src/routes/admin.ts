@@ -1,5 +1,6 @@
 // src/routes/admin.ts
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { signSession, signState, verifyState, verifySession } from '../lib/session';
 import { adminPageHtml } from '../admin/page';
@@ -22,29 +23,8 @@ function readCookie(c: { req: { header: (n: string) => string | undefined } }, n
   return null;
 }
 
-admin.get('/:org', async (c) => {
-  const { org } = c.req.param();
-  const cookie = readCookie(c, SESSION_COOKIE);
-  const session = cookie ? await verifySession(cookie, c.env.SESSION_SECRET) : null;
-  if (!session || session.org !== org) {
-    return c.redirect(`/admin/${org}/login`);
-  }
-  return c.html(adminPageHtml(org));
-});
-
-admin.get('/:org/login', async (c) => {
-  const { org } = c.req.param();
-  const nonce = crypto.randomUUID();
-  const state = await signState({ org, nonce }, c.env.SESSION_SECRET);
-  const redirectUri = `${c.env.WORKER_BASE_URL}/admin/callback`;
-  const url = new URL('https://github.com/login/oauth/authorize');
-  url.searchParams.set('client_id', c.env.GITHUB_APP_CLIENT_ID);
-  url.searchParams.set('redirect_uri', redirectUri);
-  url.searchParams.set('state', state);
-  return c.redirect(url.toString());
-});
-
-admin.get('/callback', async (c) => {
+// GitHub OAuth 回呼處理。抽成函式，讓 /callback 與「被 /:org 攔截的 callback」都能正確處理。
+async function handleOAuthCallback(c: Context<{ Bindings: Bindings; Variables: Variables }>) {
   const code = c.req.query('code');
   const state = c.req.query('state');
   if (!code || !state) return c.text('Missing code/state', 400);
@@ -78,6 +58,34 @@ admin.get('/callback', async (c) => {
   const token = await signSession({ org, user: user.login, exp: Date.now() + SESSION_TTL_MS }, c.env.SESSION_SECRET);
   c.header('Set-Cookie', sessionCookie(token));
   return c.redirect(`/admin/${org}`);
+}
+
+admin.get('/callback', (c) => handleOAuthCallback(c));
+
+admin.get('/:org', async (c) => {
+  const { org } = c.req.param();
+  // /admin/callback 可能被本參數路由攔截（callback 被當成 :org），偵測到就轉交 OAuth 回呼處理。
+  if (org === 'callback') return handleOAuthCallback(c);
+  const cookie = readCookie(c, SESSION_COOKIE);
+  const session = cookie ? await verifySession(cookie, c.env.SESSION_SECRET) : null;
+  if (!session || session.org !== org) {
+    return c.redirect(`/admin/${org}/login`);
+  }
+  return c.html(adminPageHtml(org));
+});
+
+admin.get('/:org/login', async (c) => {
+  const { org } = c.req.param();
+  // /admin/callback/login 等同 callback 被攔截後又被導去 login，避免簽出 org=callback 的 state。
+  if (org === 'callback') return handleOAuthCallback(c);
+  const nonce = crypto.randomUUID();
+  const state = await signState({ org, nonce }, c.env.SESSION_SECRET);
+  const redirectUri = `${c.env.WORKER_BASE_URL}/admin/callback`;
+  const url = new URL('https://github.com/login/oauth/authorize');
+  url.searchParams.set('client_id', c.env.GITHUB_APP_CLIENT_ID);
+  url.searchParams.set('redirect_uri', redirectUri);
+  url.searchParams.set('state', state);
+  return c.redirect(url.toString());
 });
 
 admin.post('/:org/logout', async (c) => {
