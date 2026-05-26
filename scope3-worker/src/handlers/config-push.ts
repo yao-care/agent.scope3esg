@@ -1,6 +1,6 @@
 import { getInstallationOctokit } from '../github/app';
 import { readTenantConfig } from '../github/config';
-import { listSupplierTokensByOrg, insertSupplierToken, upsertPullJob, insertAuditLog } from '../db/queries';
+import { listSupplierTokensByOrg, insertSupplierToken, upsertPullJob, insertAuditLog, deleteSupplierTokensNotIn, deletePullJobsNotIn } from '../db/queries';
 import { sendOnboardingEmail } from '../email/resend';
 import { generateToken, generateFormUrl, tokenExpiresAt } from '../lib/tokens';
 import { buildSupplierLinksMarkdown, upsertSupplierLinks } from '../github/supplier-links';
@@ -50,7 +50,12 @@ export async function syncConfig(env: Bindings, org: string, installationId: num
     }
   }
 
-  // 重新取得所有 token（含本次新產生），寫回租戶 repo 的 supplier-links.md 供手動遞送
+  // 連動撤銷：config 已移除的供應商，撤銷其 token 與 pull_job（保持與 config 同步）
+  const keepIds = config.suppliers.map((s) => s.id);
+  await deleteSupplierTokensNotIn(env.DB, org, keepIds);
+  await deletePullJobsNotIn(env.DB, org, keepIds);
+
+  // 重新取得所有 token（含本次新產生、且已撤銷移除者），寫回租戶 repo 的 supplier-links.md 供手動遞送
   const allTokens = await listSupplierTokensByOrg(env.DB, org);
   const tokenBySupplierId: Record<string, string> = {};
   for (const t of allTokens) tokenBySupplierId[t.supplierId] = t.token;

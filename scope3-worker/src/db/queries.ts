@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1';
-import { eq } from 'drizzle-orm';
+import { eq, and, notInArray } from 'drizzle-orm';
 import { tenants, supplierTokens, pullJobs, auditLog } from './schema';
 
 interface TenantInput {
@@ -135,4 +135,26 @@ export async function insertAuditLog(db: D1Database, input: AuditLogInput): Prom
 export async function listAuditLogByOrg(db: D1Database, org: string) {
   const client = drizzle(db);
   return client.select().from(auditLog).where(eq(auditLog.org, org));
+}
+
+export async function deleteSupplierTokensNotIn(db: D1Database, org: string, keepSupplierIds: string[]): Promise<void> {
+  const client = drizzle(db);
+  if (keepSupplierIds.length === 0) {
+    await client.delete(supplierTokens).where(eq(supplierTokens.org, org));
+    return;
+  }
+  await client.delete(supplierTokens).where(
+    and(eq(supplierTokens.org, org), notInArray(supplierTokens.supplierId, keepSupplierIds)),
+  );
+}
+
+export async function deletePullJobsNotIn(db: D1Database, org: string, keepSupplierIds: string[]): Promise<void> {
+  const client = drizzle(db);
+  if (keepSupplierIds.length === 0) {
+    await client.delete(pullJobs).where(eq(pullJobs.org, org));
+    return;
+  }
+  await client.delete(pullJobs).where(
+    and(eq(pullJobs.org, org), notInArray(pullJobs.supplierId, keepSupplierIds)),
+  );
 }
