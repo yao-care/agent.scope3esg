@@ -1,76 +1,44 @@
 // tenant-template/scripts/calculate.mjs
-// 由 calculate.yml 在 issue 加上 status:approved label 時執行。
-// 讀 issue scope3-data → 匹配排放係數 → 計算 co2e → 更新 data/submissions.json → 留言。
-import { readFileSync, writeFileSync } from 'node:fs';
+// 由 calculate.yml 在 push main（submissions/** 變更）觸發。掃所有 submissions/**.json，
+// 算 co2e，重建 data/submissions.json 彙整。commit 只動 data/submissions.json（不在 submissions/** path），不會重觸發。
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { matchFactor, calculateCo2e } from './lib.mjs';
 
-const token = process.env.GITHUB_TOKEN;
-const repo = process.env.GITHUB_REPOSITORY;
-const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-const issue = event.issue;
-
-const comment = (body) =>
-  fetch(`https://api.github.com/repos/${repo}/issues/${issue.number}/comments`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-    body: JSON.stringify({ body }),
-  });
-
-const match = issue.body && issue.body.match(/<!-- scope3-data:\n([\s\S]*?)\n-->/);
-if (!match) {
-  console.log('No scope3-data block; skipping.');
-  process.exit(0);
-}
-const data = JSON.parse(match[1]);
-
 const efDoc = JSON.parse(readFileSync('data/emission-factors.json', 'utf8'));
-const year = parseInt(String(data.period).slice(0, 4), 10);
-const region = 'TW';
-const factor = matchFactor(efDoc.factors, data.activity_type, region, year);
 
-if (!factor) {
-  await comment(`## ❌ 計算失敗\n找不到 \`${data.activity_type}\` 在 ${region}/${year} 的排放係數，請至 data/emission-factors.json 補上。`);
-  process.exit(0);
+function walkJson(dir) {
+  const out = [];
+  if (!existsSync(dir)) return out;
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) out.push(...walkJson(full));
+    else if (entry.endsWith('.json')) out.push(full);
+  }
+  return out;
 }
 
-const co2e = calculateCo2e(data.amount, data.unit, factor);
-if (co2e === null) {
-  await comment(`## ❌ 計算失敗\n單位 \`${data.unit}\` 無法轉換為係數單位 \`${factor.unit}\`，請改用相容單位或調整係數。`);
-  process.exit(0);
+const files = walkJson('submissions');
+const result = [];
+for (const f of files) {
+  let d;
+  try { d = JSON.parse(readFileSync(f, 'utf8')); } catch { continue; }
+  const year = parseInt(String(d.period).slice(0, 4), 10);
+  const factor = matchFactor(efDoc.factors, d.activity_type, 'TW', year);
+  const co2e = factor ? calculateCo2e(d.amount, d.unit, factor) : null;
+  result.push({
+    submission_id: d.submission_id,
+    supplier_id: d.supplier_id,
+    scope3_category: d.scope3_category,
+    period: d.period,
+    activity_type: d.activity_type,
+    amount: d.amount,
+    unit: d.unit,
+    emission_factor_id: factor ? factor.factor_id : null,
+    calculated_co2e: co2e,
+    source_file: f,
+  });
 }
-
-let subs = [];
-try {
-  subs = JSON.parse(readFileSync('data/submissions.json', 'utf8'));
-  if (!Array.isArray(subs)) subs = [];
-} catch {
-  subs = [];
-}
-subs = subs.filter((s) => s.submission_id !== data.submission_id);
-subs.push({
-  submission_id: data.submission_id,
-  supplier_id: data.supplier_id,
-  scope3_category: data.scope3_category,
-  period: data.period,
-  activity_type: data.activity_type,
-  amount: data.amount,
-  unit: data.unit,
-  emission_factor_id: factor.factor_id,
-  calculated_co2e: co2e,
-  approved_at: new Date().toISOString(),
-  issue_number: issue.number,
-});
-writeFileSync('data/submissions.json', JSON.stringify(subs, null, 2) + '\n');
-
-await comment(
-  `## ✅ 排放量計算完成\n` +
-    `- 係數：\`${factor.factor_id}\`（${factor.value} ${factor.unit}，來源 ${factor.source}）\n` +
-    `- 活動數據：${data.amount} ${data.unit}\n` +
-    `- **計算結果：${co2e.toFixed(2)} kgCO2e（${(co2e / 1000).toFixed(3)} tCO2e）**\n` +
-    `\n已寫入 \`data/submissions.json\`。`,
-);
-console.log(`Calculated ${co2e} kgCO2e for issue #${issue.number}.`);
+result.sort((a, b) => (a.supplier_id + a.period).localeCompare(b.supplier_id + b.period));
+writeFileSync('data/submissions.json', JSON.stringify(result, null, 2) + '\n');
+console.log(`Calculated ${result.length} submission(s) into data/submissions.json.`);

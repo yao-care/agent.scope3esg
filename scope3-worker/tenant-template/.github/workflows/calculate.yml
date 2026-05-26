@@ -1,16 +1,16 @@
 name: Calculate Emissions
 
 on:
-  issues:
-    types: [labeled]
+  push:
+    branches: [main]
+    paths:
+      - 'submissions/**'
 
 permissions:
-  issues: write
   contents: write
 
 jobs:
   calculate:
-    if: github.event.label.name == 'status:approved'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,12 +19,10 @@ jobs:
           node-version: 20
       - name: Calculate emissions
         run: node scripts/calculate.mjs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Commit submissions.json
+      - name: Commit aggregate
         run: |
           git config user.name "scope3-bot"
           git config user.email "bot@scope3.yao.care"
           git add data/submissions.json
-          git diff --staged --quiet || git commit -m "calc: update submissions for issue #${{ github.event.issue.number }}"
+          git diff --staged --quiet || git commit -m "calc: rebuild submissions aggregate [skip ci]"
           git push

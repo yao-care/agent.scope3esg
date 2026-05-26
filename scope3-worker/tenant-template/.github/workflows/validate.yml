@@ -1,16 +1,13 @@
 name: Validate Submission
 
 on:
-  issues:
-    types: [opened, edited]
-  workflow_dispatch:
-    inputs:
-      issue_number:
-        description: Issue number to validate
-        required: true
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'submissions/**'
 
 permissions:
-  issues: write
+  pull-requests: write
   contents: read
 
 jobs:
@@ -18,11 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run validation
+      - name: Validate changed submissions
         run: node scripts/validate.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.inputs.issue_number || github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
