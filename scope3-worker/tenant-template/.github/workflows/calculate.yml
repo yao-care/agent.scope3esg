@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'submissions/**'
+  workflow_dispatch:  # 允許手動重算（例如改了排放係數後重建彙整）
 
 permissions:
   contents: write
