@@ -12,31 +12,23 @@ function formHtml(org: string, token: string, supplierId: string): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scope 3 碳排資料提交</title>
-<style>
-  body { font-family: sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; }
-  h1 { font-size: 1.4rem; color: #1a1a1a; }
-  label { display: block; margin: 16px 0 4px; font-weight: bold; font-size: .9rem; }
-  input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-  .row { display: flex; gap: 12px; }
-  .row > * { flex: 1; }
-  button { margin-top: 24px; padding: 12px 32px; background: #0070f3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
-  .supplier { color: #555; font-size: .9rem; margin-bottom: 24px; }
-</style>
+<link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+<div class="container">
 <h1>Scope 3 碳排資料提交</h1>
-<p class="supplier">供應商：<strong>${supplierId}</strong></p>
+<p class="supplier-note">供應商：<strong>${supplierId}</strong></p>
 <form method="POST" enctype="multipart/form-data">
-  <label>盤點類別 (Scope 3 Category)</label>
-  <select name="scope3_category" required>
+  <label class="label">盤點類別 (Scope 3 Category)</label>
+  <select class="select" name="scope3_category" required>
     ${Array.from({length:15},(_,i)=>`<option value="${i+1}">Category ${i+1}</option>`).join('')}
   </select>
 
-  <label>期間（例：2025-Q1）</label>
-  <input name="period" placeholder="2025-Q1" required pattern="\\d{4}-Q[1-4]">
+  <label class="label">期間（例：2025-Q1）</label>
+  <input class="input" name="period" placeholder="2025-Q1" required pattern="\\d{4}-Q[1-4]">
 
-  <label>活動類型</label>
-  <select name="activity_type" id="activity_type" required>
+  <label class="label">活動類型</label>
+  <select class="select" name="activity_type" id="activity_type" required>
     <option value="electricity">電力 (Electricity)</option>
     <option value="natural_gas">天然氣 (Natural Gas)</option>
     <option value="diesel">柴油 (Diesel)</option>
@@ -48,19 +40,19 @@ function formHtml(org: string, token: string, supplierId: string): string {
 
   <div class="row">
     <div>
-      <label>數量</label>
-      <input name="amount" type="number" step="any" required>
+      <label class="label">數量</label>
+      <input class="input" name="amount" type="number" step="any" required>
     </div>
     <div>
-      <label>單位</label>
-      <select name="unit" id="unit" required></select>
+      <label class="label">單位</label>
+      <select class="select" name="unit" id="unit" required></select>
     </div>
   </div>
 
-  <label>佐證文件（可多選，最大 10MB/檔）</label>
-  <input name="files" type="file" multiple accept=".pdf,.xlsx,.csv,.jpg,.png">
+  <label class="label">佐證文件（可多選，最大 10MB/檔）</label>
+  <input class="input" name="files" type="file" multiple accept=".pdf,.xlsx,.csv,.jpg,.png">
 
-  <button type="submit">提交資料</button>
+  <button class="btn btn-primary btn-lg" type="submit">提交資料</button>
 </form>
 <script>
   // 單位選項依活動類型連動，須與後端 lib.mjs 的 UNIT_RULES 一致，
@@ -85,6 +77,7 @@ function formHtml(org: string, token: string, supplierId: string): string {
   actEl.addEventListener('change', syncUnits);
   syncUnits();
 </script>
+</div>
 </body>
 </html>`;
 }
@@ -93,11 +86,10 @@ function successHtml(): string {
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
 <head><meta charset="UTF-8"><title>提交成功</title>
-<style>body{font-family:sans-serif;max-width:480px;margin:80px auto;text-align:center;}
-h1{color:#0e8a16;}p{color:#555;}</style></head>
-<body><h1>✅ 提交成功</h1>
+<link rel="stylesheet" href="/assets/app.css"></head>
+<body><div class="container"><div class="success-box"><h1>✅ 提交成功</h1>
 <p>資料已收到，審查人員將在 5 個工作天內完成審核。</p>
-<p>感謝您的配合。</p></body></html>`;
+<p>感謝您的配合。</p></div></div></body></html>`;
 }
 
 submit.get('/:org/:token', async (c) => {
