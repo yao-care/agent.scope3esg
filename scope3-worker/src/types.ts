@@ -9,6 +9,7 @@ export interface Bindings {
   GITHUB_APP_CLIENT_SECRET: string;
   RESEND_API_KEY: string;
   WORKER_BASE_URL: string;
+  SESSION_SECRET: string;
 }
 
 export interface Variables {
