@@ -4,6 +4,8 @@ import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { signSession, signState, verifyState, verifySession } from '../lib/session';
 import { adminPageHtml } from '../admin/page';
+import { getTenantByOrg } from '../db/queries';
+import { getInstallationOctokit } from '../github/app';
 
 const admin = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -48,12 +50,16 @@ async function handleOAuthCallback(c: Context<{ Bindings: Bindings; Variables: V
   const user = await userRes.json<{ login?: string }>();
   if (!user.login) return c.text('Cannot read user', 401);
 
-  const memRes = await fetch(`https://api.github.com/orgs/${org}/memberships/${user.login}`, {
-    headers: { Authorization: `Bearer ${userToken}`, 'User-Agent': 'scope3-app', Accept: 'application/vnd.github+json' },
-  });
-  if (!memRes.ok) return c.text('Not a member of this organization', 403);
-  const mem = await memRes.json<{ state?: string }>();
-  if (mem.state !== 'active') return c.text('Membership not active', 403);
+  // 用 installation token（App 有 members:read）確認使用者為該 org 成員。
+  // GET /orgs/{org}/members/{username}：204=成員、404=非成員（octokit 對 404 會 throw）。
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.text('Organization not onboarded', 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  try {
+    await octokit.request('GET /orgs/{org}/members/{username}', { org, username: user.login });
+  } catch {
+    return c.text('Not a member of this organization', 403);
+  }
 
   const token = await signSession({ org, user: user.login, exp: Date.now() + SESSION_TTL_MS }, c.env.SESSION_SECRET);
   c.header('Set-Cookie', sessionCookie(token));
