@@ -5,7 +5,7 @@ import { insertSupplierToken } from '../../src/db/queries';
 import { app } from '../../src/index';
 
 vi.mock('../../src/handlers/submission', () => ({
-  processSubmission: vi.fn().mockResolvedValue({ success: true, issueNumber: 7 }),
+  processSubmission: vi.fn().mockResolvedValue({ success: true, prNumber: 7 }),
 }));
 
 describe('POST /api/v1/submit', () => {
@@ -19,7 +19,7 @@ describe('POST /api/v1/submit', () => {
     });
   });
 
-  it('returns 201 with issue number on valid request', async () => {
+  it('returns 201 with PR number on valid request', async () => {
     const res = await app.request('/api/v1/submit', {
       method:  'POST',
       headers: {
@@ -38,8 +38,8 @@ describe('POST /api/v1/submit', () => {
     }, env as any);
 
     expect(res.status).toBe(201);
-    const body = await res.json<{ issueNumber: number }>();
-    expect(body.issueNumber).toBe(7);
+    const body = await res.json<{ prNumber: number }>();
+    expect(body.prNumber).toBe(7);
   });
 
   it('returns 401 when Authorization header is missing', async () => {

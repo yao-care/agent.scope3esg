@@ -1,6 +1,6 @@
 import { getSupplierToken, insertAuditLog } from '../db/queries';
 import { getInstallationOctokit } from '../github/app';
-import { createSubmissionIssue } from '../github/issue';
+import { getMainSha, createBranch, commitFileToBranch, openPullRequest } from '../github/pr';
 import type { Bindings, Submission } from '../types';
 
 interface SubmissionInput {
@@ -18,9 +18,9 @@ interface SubmissionInput {
 }
 
 interface SubmissionResult {
-  success:      boolean;
-  issueNumber?: number;
-  error?:       string;
+  success:   boolean;
+  prNumber?: number;
+  error?:    string;
 }
 
 export async function processSubmission(
@@ -63,22 +63,41 @@ export async function processSubmission(
     calculated_co2e:    null,
   };
 
-  const issueNumber = await createSubmissionIssue(octokit, input.org, submission);
+  // branch/PR 盤查模型：一筆提交 = 分支 + submission JSON 檔 + PR（不 push、不 dispatch，
+  // 由 repo 端 on:pull_request workflow 自動跑驗證）。
+  const branch = `sub/${submission.supplier_id}/${submission.submission_id}`;
+  const path   = `submissions/${submission.supplier_id}/${submission.submission_id}.json`;
 
-  // 主動觸發 validate workflow（App token 建的 Issue 不會自動觸發 on:issues）
-  try {
-    await octokit.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches', {
-      owner: input.org,
-      repo: 'scope3-inventory',
-      workflow_id: 'validate.yml',
-      ref: 'main',
-      inputs: { issue_number: String(issueNumber) },
-    });
-  } catch (e) {
-    console.error('[submission] failed to dispatch validate workflow:', e);
-  }
+  const mainSha = await getMainSha(octokit, input.org);
+  await createBranch(octokit, input.org, branch, mainSha);
+  await commitFileToBranch(
+    octokit,
+    input.org,
+    branch,
+    path,
+    JSON.stringify(submission, null, 2),
+    `submission: ${submission.supplier_id} ${submission.period} ${submission.activity_type}`,
+  );
 
-  await insertAuditLog(env.DB, { org: input.org, action: 'submission_created', actor: tokenRow.supplierId, target: 'issue#' + issueNumber });
+  const title = `[${submission.supplier_name}] Scope 3 Cat.${submission.scope3_category} — ${submission.period}`;
+  const body = [
+    '## 供應商碳排資料提交（待盤查員審核）',
+    '',
+    '| 欄位 | 值 |',
+    '|------|-----|',
+    `| 供應商 | ${submission.supplier_name} (${submission.supplier_id}) |`,
+    `| 類別 | Scope 3 Category ${submission.scope3_category} |`,
+    `| 期間 | ${submission.period} |`,
+    `| 活動類型 | ${submission.activity_type} |`,
+    `| 數量 | ${submission.amount} ${submission.unit} |`,
+    `| 管道 | ${submission.channel} |`,
+    '',
+    '審核通過請 **merge** 此 PR；需補件請留言並關閉或要求修改。',
+  ].join('\n');
 
-  return { success: true, issueNumber };
+  const prNumber = await openPullRequest(octokit, input.org, branch, title, body);
+
+  await insertAuditLog(env.DB, { org: input.org, action: 'submission_pr_opened', actor: submission.supplier_id, target: `PR#${prNumber}` });
+
+  return { success: true, prNumber };
 }

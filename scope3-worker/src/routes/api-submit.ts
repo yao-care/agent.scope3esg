@@ -33,7 +33,7 @@ apiSubmit.post('/', async (c) => {
     return c.json({ error: result.error }, 400);
   }
 
-  return c.json({ issueNumber: result.issueNumber }, 201);
+  return c.json({ prNumber: result.prNumber }, 201);
 });
 
 export default apiSubmit;

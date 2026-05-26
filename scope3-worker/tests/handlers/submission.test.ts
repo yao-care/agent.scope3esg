@@ -8,8 +8,11 @@ vi.mock('../../src/github/app', () => ({
   getInstallationOctokit: vi.fn().mockResolvedValue({ request: vi.fn() }),
 }));
 
-vi.mock('../../src/github/issue', () => ({
-  createSubmissionIssue: vi.fn().mockResolvedValue(99),
+vi.mock('../../src/github/pr', () => ({
+  getMainSha: vi.fn().mockResolvedValue('mainsha'),
+  createBranch: vi.fn().mockResolvedValue(undefined),
+  commitFileToBranch: vi.fn().mockResolvedValue(undefined),
+  openPullRequest: vi.fn().mockResolvedValue(42),
 }));
 
 vi.mock('../../src/db/queries', async (importOriginal) => {
@@ -35,7 +38,7 @@ describe('processSubmission', () => {
     });
   });
 
-  it('returns issue number on valid submission', async () => {
+  it('returns PR number on valid submission', async () => {
     const result = await processSubmission(env as any, {
       org:           'acme-corp',
       supplierToken: 'tok_valid',
@@ -50,7 +53,7 @@ describe('processSubmission', () => {
       channel: 'api',
     });
     expect(result.success).toBe(true);
-    expect(result.issueNumber).toBe(99);
+    expect(result.prNumber).toBe(42);
   });
 
   it('returns error for invalid token', async () => {
