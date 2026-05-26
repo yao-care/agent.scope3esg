@@ -118,7 +118,7 @@ submit.post('/:org/:token', async (c) => {
   const files = formData.getAll('files');
   for (const file of files) {
     // 未選檔時 getAll 可能回傳空字串而非 File；只處理真正的 File 且非空。
-    if (!(file instanceof File) || file.size === 0) continue;
+    if (typeof file === 'string' || file.size === 0) continue;
     const ext = file.name.split('.').pop() ?? 'bin';
     const key = `${org}/${crypto.randomUUID()}.${ext}`;
     await c.env.FILES.put(key, await file.arrayBuffer(), {
