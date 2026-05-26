@@ -90,16 +90,18 @@ interface PullJobInput {
   supplierId: string;
   apiUrl:     string;
   schedule:   string;
+  // 供應商自己的 API 憑證（呼叫其 ESG API 的 Bearer），與 supplier token 不同
+  apiToken:   string | null;
 }
 
 export async function upsertPullJob(db: D1Database, input: PullJobInput): Promise<void> {
   const client = drizzle(db);
   await client
     .insert(pullJobs)
-    .values({ jobId: input.jobId, org: input.org, supplierId: input.supplierId, apiUrl: input.apiUrl, schedule: input.schedule, lastRunAt: null })
+    .values({ jobId: input.jobId, org: input.org, supplierId: input.supplierId, apiUrl: input.apiUrl, schedule: input.schedule, lastRunAt: null, apiToken: input.apiToken })
     .onConflictDoUpdate({
       target: pullJobs.jobId,
-      set: { org: input.org, supplierId: input.supplierId, apiUrl: input.apiUrl, schedule: input.schedule },
+      set: { org: input.org, supplierId: input.supplierId, apiUrl: input.apiUrl, schedule: input.schedule, apiToken: input.apiToken },
     });
 }
 

@@ -13,7 +13,7 @@ vi.mock('../../src/github/config', () => ({
     inventory_year:      2025,
     enabled_categories:  [1, 4],
     suppliers: [
-      { id: 'SUP001', name: '台鋼', contact: 'esg@twsteel.com', pull_api: null, pull_schedule: null },
+      { id: 'SUP001', name: '台鋼', contact: 'esg@twsteel.com', pull_api: null, pull_schedule: null, pull_api_token: null },
     ],
   }),
 }));

@@ -12,7 +12,7 @@ export async function handleScheduled(env: Bindings): Promise<void> {
       console.warn('[scheduled] no supplier token for ' + job.org + '/' + job.supplierId + '; skipping');
       continue;
     }
-    await env.SUBMISSION_QUEUE.send({ org: job.org, supplier_id: job.supplierId, api_url: job.apiUrl, token: tok.token });
+    await env.SUBMISSION_QUEUE.send({ org: job.org, supplier_id: job.supplierId, api_url: job.apiUrl, token: tok.token, api_token: job.apiToken ?? null });
     await touchPullJobLastRun(env.DB, job.jobId);
   }
 }

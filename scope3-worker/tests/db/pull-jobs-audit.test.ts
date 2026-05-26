@@ -7,12 +7,12 @@ describe('pull_jobs queries', () => {
   beforeAll(async () => { await applyMigrations(env.DB); });
 
   it('upserts and lists pull jobs', async () => {
-    await upsertPullJob(env.DB, { jobId: 'acme:SUP001', org: 'acme', supplierId: 'SUP001', apiUrl: 'https://api.x/esg', schedule: '0 9 * * 1' });
+    await upsertPullJob(env.DB, { jobId: 'acme:SUP001', org: 'acme', supplierId: 'SUP001', apiUrl: 'https://api.x/esg', schedule: '0 9 * * 1', apiToken: null });
     const jobs = await listAllPullJobs(env.DB);
     expect(jobs.some((j) => j.jobId === 'acme:SUP001')).toBe(true);
   });
   it('upsert is idempotent on jobId and updates apiUrl', async () => {
-    await upsertPullJob(env.DB, { jobId: 'acme:SUP001', org: 'acme', supplierId: 'SUP001', apiUrl: 'https://api.x/v2', schedule: '0 9 * * 1' });
+    await upsertPullJob(env.DB, { jobId: 'acme:SUP001', org: 'acme', supplierId: 'SUP001', apiUrl: 'https://api.x/v2', schedule: '0 9 * * 1', apiToken: null });
     const jobs = (await listAllPullJobs(env.DB)).filter((j) => j.jobId === 'acme:SUP001');
     expect(jobs.length).toBe(1);
     expect(jobs[0].apiUrl).toBe('https://api.x/v2');

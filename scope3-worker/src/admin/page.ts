@@ -23,7 +23,7 @@ export function adminPageHtml(org: string): string {
 
 <section class="card">
   <h2>② 供應商</h2>
-  <table class="table"><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>Pull API</th><th>排程</th><th>填表連結</th><th>已提交</th><th></th></tr></thead>
+  <table class="table"><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>Pull API</th><th>排程</th><th>Pull 金鑰</th><th>填表連結</th><th>已提交</th><th></th></tr></thead>
   <tbody id="suppliers"></tbody></table>
   <p><button class="btn btn-secondary" id="addRow">+ 新增供應商</button></p>
   <p><button class="btn btn-primary" id="save">💾 儲存設定</button> <span id="saveStatus" class="muted"></span></p>
@@ -61,6 +61,7 @@ function supplierRowHtml(s){
     '<td><input class="input s-contact" value="'+esc(s.contact)+'"></td>'+
     '<td><input class="input s-api" value="'+esc(s.pull_api)+'"></td>'+
     '<td><input class="input s-sched" value="'+esc(s.pull_schedule)+'"></td>'+
+    '<td><input class="input s-apitoken" value="'+esc(s.pull_api_token)+'"></td>'+
     '<td>'+linkCell+'</td>'+
     '<td>'+esc(count)+'</td>'+
     '<td class="row-actions"><button class="btn btn-danger del-row" type="button">刪</button></td></tr>';
@@ -82,7 +83,8 @@ function collectConfig(){
       name:tr.querySelector('.s-name').value.trim(),
       contact:tr.querySelector('.s-contact').value.trim(),
       pull_api:tr.querySelector('.s-api').value.trim()||null,
-      pull_schedule:tr.querySelector('.s-sched').value.trim()||null
+      pull_schedule:tr.querySelector('.s-sched').value.trim()||null,
+      pull_api_token:tr.querySelector('.s-apitoken').value.trim()||null
     });
   }
   return { inventory_year:Number(document.getElementById('year').value)||new Date().getFullYear(), enabled_categories:enabled, suppliers:suppliers };

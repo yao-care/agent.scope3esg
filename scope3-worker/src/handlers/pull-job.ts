@@ -6,9 +6,11 @@ export async function executePullJob(
   job: PullJobMessage,
 ): Promise<void> {
   let response: Response;
+  // 呼叫供應商 API 用供應商自己的 API 憑證（job.api_token）；若未設定則 fallback 用我們的 supplier token。
+  const apiAuth = job.api_token || job.token;
   try {
     response = await fetch(job.api_url, {
-      headers: { Authorization: `Bearer ${job.token}` },
+      headers: { Authorization: `Bearer ${apiAuth}` },
     });
   } catch (err) {
     console.error(`[pull-job] fetch failed for ${job.org}/${job.supplier_id}:`, err);

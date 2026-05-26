@@ -5,7 +5,7 @@ const config = {
   inventory_year: 2026,
   enabled_categories: [1, 4, 6],
   suppliers: [
-    { id: 'SUP001', name: '台鋼', contact: 'esg@twsteel.com', pull_api: null, pull_schedule: null },
+    { id: 'SUP001', name: '台鋼', contact: 'esg@twsteel.com', pull_api: null, pull_schedule: null, pull_api_token: null },
   ],
 };
 

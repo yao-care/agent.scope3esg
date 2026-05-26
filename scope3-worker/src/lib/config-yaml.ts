@@ -27,5 +27,7 @@ function normalizeSupplier(s: Partial<SupplierConfig>): SupplierConfig {
     contact: String(s.contact ?? ''),
     pull_api: s.pull_api ?? null,
     pull_schedule: s.pull_schedule ?? null,
+    // 供應商自己的 API 憑證；存於 config.yml（private repo，MVP 簡化可接受）
+    pull_api_token: s.pull_api_token ?? null,
   };
 }

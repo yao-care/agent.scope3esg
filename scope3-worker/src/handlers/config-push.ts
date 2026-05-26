@@ -24,6 +24,8 @@ export async function syncConfig(env: Bindings, org: string, installationId: num
         supplierId: supplier.id,
         apiUrl:     supplier.pull_api,
         schedule:   supplier.pull_schedule ?? '',
+        // 供應商自己的 API 憑證（呼叫其 API 的 Bearer），與我們發的 supplier token 分開
+        apiToken:   supplier.pull_api_token ?? null,
       });
     }
 

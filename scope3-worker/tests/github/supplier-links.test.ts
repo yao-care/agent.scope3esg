@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { buildSupplierLinksMarkdown } from '../../src/github/supplier-links';
 
 const suppliers = [
-  { id: 'SUP001', name: '台鋼', contact: 'esg@twsteel.com', pull_api: null, pull_schedule: null },
-  { id: 'SUP002', name: '台達電', contact: 'carbon@delta.com', pull_api: null, pull_schedule: null },
+  { id: 'SUP001', name: '台鋼', contact: 'esg@twsteel.com', pull_api: null, pull_schedule: null, pull_api_token: null },
+  { id: 'SUP002', name: '台達電', contact: 'carbon@delta.com', pull_api: null, pull_schedule: null, pull_api_token: null },
 ];
 
 describe('buildSupplierLinksMarkdown', () => {

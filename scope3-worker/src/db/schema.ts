@@ -22,6 +22,8 @@ export const pullJobs = sqliteTable('pull_jobs', {
   apiUrl:     text('api_url').notNull(),
   schedule:   text('schedule').notNull(),
   lastRunAt:  text('last_run_at'),
+  // 供應商自己的 API 憑證（呼叫其 ESG API 的 Bearer），與 supplier_tokens.token 不同
+  apiToken:   text('api_token'),
 });
 
 export const auditLog = sqliteTable('audit_log', {

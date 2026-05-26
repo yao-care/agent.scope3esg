@@ -68,11 +68,14 @@ export interface SupplierConfig {
   contact: string;
   pull_api: string | null;
   pull_schedule: string | null;
+  // 供應商自己的 API 憑證（呼叫其 ESG API 用的 Bearer），與我們發給供應商的 token 不同。
+  pull_api_token: string | null;
 }
 
 export interface PullJobMessage {
   org: string;
   supplier_id: string;
   api_url: string;
-  token: string;
+  token: string;          // 我們發給供應商的 supplier token（processSubmission 用）
+  api_token: string | null; // 供應商自己的 API 憑證（呼叫其 API 的 Bearer）
 }
