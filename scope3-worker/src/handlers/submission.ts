@@ -65,6 +65,19 @@ export async function processSubmission(
 
   const issueNumber = await createSubmissionIssue(octokit, input.org, submission);
 
+  // 主動觸發 validate workflow（App token 建的 Issue 不會自動觸發 on:issues）
+  try {
+    await octokit.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches', {
+      owner: input.org,
+      repo: 'scope3-inventory',
+      workflow_id: 'validate.yml',
+      ref: 'main',
+      inputs: { issue_number: String(issueNumber) },
+    });
+  } catch (e) {
+    console.error('[submission] failed to dispatch validate workflow:', e);
+  }
+
   await insertAuditLog(env.DB, { org: input.org, action: 'submission_created', actor: tokenRow.supplierId, target: 'issue#' + issueNumber });
 
   return { success: true, issueNumber };

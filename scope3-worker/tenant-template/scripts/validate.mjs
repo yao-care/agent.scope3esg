@@ -1,14 +1,12 @@
 // tenant-template/scripts/validate.mjs
-// 由 validate.yml 在 issue opened/edited 時執行。
-// 解析 issue body 的 scope3-data JSON，做單位/異常值/缺件驗證，
-// 留言結果並在有問題時加上 validation:error label。
+// 由 validate.yml 觸發（issues 事件或 workflow_dispatch）。統一用 ISSUE_NUMBER 取得 issue，
+// 解析 scope3-data JSON，做單位/異常值/缺件驗證，留言並在有問題時加 validation:error label。
 import { readFileSync } from 'node:fs';
 import { validateUnit, detectOutlier } from './lib.mjs';
 
 const token = process.env.GITHUB_TOKEN;
 const repo = process.env.GITHUB_REPOSITORY;
-const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-const issue = event.issue;
+const issueNumber = process.env.ISSUE_NUMBER;
 
 const api = (path, init = {}) =>
   fetch(`https://api.github.com/repos/${repo}${path}`, {
@@ -21,6 +19,18 @@ const api = (path, init = {}) =>
     },
   });
 
+if (!issueNumber) {
+  console.log('No ISSUE_NUMBER; skipping.');
+  process.exit(0);
+}
+
+const issueRes = await api(`/issues/${issueNumber}`);
+if (!issueRes.ok) {
+  console.error(`Cannot fetch issue #${issueNumber}: ${issueRes.status}`);
+  process.exit(0);
+}
+const issue = await issueRes.json();
+
 const match = issue.body && issue.body.match(/<!-- scope3-data:\n([\s\S]*?)\n-->/);
 if (!match) {
   console.log('No scope3-data block found; skipping validation.');
@@ -31,11 +41,11 @@ let data;
 try {
   data = JSON.parse(match[1]);
 } catch (err) {
-  await api(`/issues/${issue.number}/comments`, {
+  await api(`/issues/${issueNumber}/comments`, {
     method: 'POST',
     body: JSON.stringify({ body: '## ⚠️ 驗證錯誤\n- 無法解析提交資料 JSON' }),
   });
-  await api(`/issues/${issue.number}/labels`, {
+  await api(`/issues/${issueNumber}/labels`, {
     method: 'POST',
     body: JSON.stringify({ labels: ['validation:error'] }),
   });
@@ -54,7 +64,7 @@ try {
     .filter((s) => s.supplier_id === data.supplier_id && s.activity_type === data.activity_type)
     .map((s) => s.amount);
 } catch {
-  // submissions.json 尚未存在，視為無歷史
+  // submissions.json 尚未存在
 }
 const outlier = detectOutlier(data.amount, history);
 if (outlier.outlier) problems.push(outlier.message);
@@ -64,17 +74,17 @@ if (!data.evidence_urls || data.evidence_urls.length === 0) {
 }
 
 if (problems.length > 0) {
-  await api(`/issues/${issue.number}/comments`, {
+  await api(`/issues/${issueNumber}/comments`, {
     method: 'POST',
     body: JSON.stringify({ body: `## ⚠️ 驗證發現問題\n${problems.map((p) => `- ${p}`).join('\n')}` }),
   });
-  await api(`/issues/${issue.number}/labels`, {
+  await api(`/issues/${issueNumber}/labels`, {
     method: 'POST',
     body: JSON.stringify({ labels: ['validation:error'] }),
   });
   console.log(`Validation failed with ${problems.length} problem(s).`);
 } else {
-  await api(`/issues/${issue.number}/comments`, {
+  await api(`/issues/${issueNumber}/comments`, {
     method: 'POST',
     body: JSON.stringify({ body: '## ✅ 驗證通過\n單位合法、無異常值、佐證文件齊全。' }),
   });

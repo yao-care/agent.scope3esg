@@ -3,6 +3,11 @@ name: Validate Submission
 on:
   issues:
     types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to validate
+        required: true
 
 permissions:
   issues: write
@@ -20,3 +25,4 @@ jobs:
         run: node scripts/validate.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number || github.event.issue.number }}
