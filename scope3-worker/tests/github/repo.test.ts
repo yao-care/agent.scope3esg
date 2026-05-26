@@ -46,4 +46,27 @@ describe('createTenantRepo', () => {
     );
     expect(labelCalls.length).toBe(22);
   });
+
+  it('is idempotent: when repo already exists (422), returns existing node_id without re-committing', async () => {
+    const idempotentOctokit = {
+      request: vi.fn(async (route: string) => {
+        if (route === 'POST /orgs/{org}/repos') {
+          throw Object.assign(new Error('name already exists on this account'), { status: 422 });
+        }
+        if (route === 'GET /repos/{owner}/{repo}') return { data: { node_id: 'R_existing' } };
+        return { data: {} };
+      }),
+    };
+    const nodeId = await createTenantRepo(idempotentOctokit as any, 'acme-corp');
+    expect(nodeId).toBe('R_existing');
+    // 不應重複寫入檔案或 labels
+    const putCalls = idempotentOctokit.request.mock.calls.filter(
+      (c) => c[0] === 'PUT /repos/{owner}/{repo}/contents/{path}',
+    );
+    const labelCalls = idempotentOctokit.request.mock.calls.filter(
+      (c) => c[0] === 'POST /repos/{owner}/{repo}/labels',
+    );
+    expect(putCalls.length).toBe(0);
+    expect(labelCalls.length).toBe(0);
+  });
 });

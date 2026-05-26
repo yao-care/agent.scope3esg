@@ -12,15 +12,20 @@ webhook.post('/', async (c, next) => {
   const event = c.req.header('x-github-event') ?? '';
   const body = JSON.parse(c.get('rawBody' as never) as string);
 
-  switch (event) {
-    case 'installation':
-      await handleInstallation(c.env, body);
-      break;
-    case 'push':
-      await handleConfigPush(c.env, body);
-      break;
-    case 'ping':
-      break;
+  try {
+    switch (event) {
+      case 'installation':
+        await handleInstallation(c.env, body);
+        break;
+      case 'push':
+        await handleConfigPush(c.env, body);
+        break;
+      case 'ping':
+        break;
+    }
+  } catch (e) {
+    console.error(`[webhook] ${event} handler failed:`, e);
+    return c.text('Internal Server Error', 500);
   }
 
   return c.text('ok');

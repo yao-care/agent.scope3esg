@@ -10,12 +10,22 @@ interface TenantInput {
 
 export async function insertTenant(db: D1Database, input: TenantInput): Promise<void> {
   const client = drizzle(db);
-  await client.insert(tenants).values({
-    installationId: input.installationId,
-    org:            input.org,
-    repoNodeId:     input.repoNodeId ?? null,
-    createdAt:      new Date().toISOString(),
-  });
+  await client
+    .insert(tenants)
+    .values({
+      installationId: input.installationId,
+      org:            input.org,
+      repoNodeId:     input.repoNodeId ?? null,
+      createdAt:      new Date().toISOString(),
+    })
+    // 重複安裝 / webhook 重送時冪等：以 installation_id 為鍵更新 org 與 repo_node_id，保留原 created_at
+    .onConflictDoUpdate({
+      target: tenants.installationId,
+      set: {
+        org:        input.org,
+        repoNodeId: input.repoNodeId ?? null,
+      },
+    });
 }
 
 export async function getTenant(db: D1Database, installationId: number) {

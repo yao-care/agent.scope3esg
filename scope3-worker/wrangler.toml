@@ -22,7 +22,7 @@ max_batch_size = 10
 max_batch_timeout = 30
 
 [vars]
-GITHUB_APP_ID = "3854967"
+GITHUB_APP_ID = "3863190"
 WORKER_BASE_URL = "https://scope3-worker.lightman-chang.workers.dev"
 
 # Secrets（set via: wrangler secret put <KEY>）:
