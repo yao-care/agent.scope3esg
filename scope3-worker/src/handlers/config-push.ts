@@ -3,6 +3,7 @@ import { readTenantConfig } from '../github/config';
 import { listSupplierTokensByOrg, insertSupplierToken } from '../db/queries';
 import { sendOnboardingEmail } from '../email/resend';
 import { generateToken, generateFormUrl, tokenExpiresAt } from '../lib/tokens';
+import { buildSupplierLinksMarkdown, upsertSupplierLinks } from '../github/supplier-links';
 import type { Bindings, GitHubPushPayload } from '../types';
 
 export async function handleConfigPush(
@@ -45,4 +46,11 @@ export async function handleConfigPush(
       });
     }
   }
+
+  // 重新取得所有 token（含本次新產生），寫回租戶 repo 的 supplier-links.md 供手動遞送
+  const allTokens = await listSupplierTokensByOrg(env.DB, org);
+  const tokenBySupplierId: Record<string, string> = {};
+  for (const t of allTokens) tokenBySupplierId[t.supplierId] = t.token;
+  const markdown = buildSupplierLinksMarkdown(env.WORKER_BASE_URL, org, config.suppliers, tokenBySupplierId);
+  await upsertSupplierLinks(octokit, org, markdown);
 }
