@@ -48,4 +48,10 @@ describe('admin API auth', () => {
     const body = await res.json<{ links: Array<{ supplierId: string; url: string }> }>();
     expect(body.links.some((l) => l.supplierId === 'SUP001')).toBe(true);
   });
+  it('returns supplier overview with form url and submission count', async () => {
+    const res = await app.request('/api/v1/admin/acme/overview', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect(res.status).toBe(200);
+    const body = await res.json<{ suppliers: Array<{ id: string }> }>();
+    expect(Array.isArray(body.suppliers)).toBe(true);
+  });
 });

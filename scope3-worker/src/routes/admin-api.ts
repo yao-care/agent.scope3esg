@@ -88,4 +88,41 @@ adminApi.get('/:org/submissions', async (c) => {
   return c.json({ submissions: items });
 });
 
+adminApi.get('/:org/overview', async (c) => {
+  const { org } = c.req.param();
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  const config = await readTenantConfig(octokit, org) ?? { inventory_year: new Date().getFullYear(), enabled_categories: [], suppliers: [] };
+
+  // token → formUrl by supplierId
+  const tokens = await listSupplierTokensByOrg(c.env.DB, org);
+  const urlBySupplier: Record<string, string> = {};
+  for (const t of tokens) urlBySupplier[t.supplierId] = generateFormUrl(c.env.WORKER_BASE_URL, org, t.token);
+
+  // 提交數 by supplierId（解析 issue body 的 scope3-data）
+  const countBySupplier: Record<string, number> = {};
+  try {
+    const { data: issues } = await octokit.request('GET /repos/{owner}/{repo}/issues', {
+      owner: org, repo: 'scope3-inventory', state: 'all', per_page: 100,
+    });
+    for (const issue of issues as Array<{ body?: string }>) {
+      const m = issue.body && issue.body.match(/<!-- scope3-data:\n([\s\S]*?)\n-->/);
+      if (!m) continue;
+      try {
+        const d = JSON.parse(m[1]);
+        if (d.supplier_id) countBySupplier[d.supplier_id] = (countBySupplier[d.supplier_id] || 0) + 1;
+      } catch { /* skip */ }
+    }
+  } catch { /* repo issues unreadable */ }
+
+  const suppliers = (config.suppliers || []).map((s) => ({
+    ...s,
+    formUrl: urlBySupplier[s.id] || null,
+    submissionCount: countBySupplier[s.id] || 0,
+  }));
+
+  return c.json({ inventory_year: config.inventory_year, enabled_categories: config.enabled_categories, suppliers });
+});
+
 export default adminApi;

@@ -22,22 +22,11 @@ export function adminPageHtml(org: string): string {
 </section>
 
 <section class="card">
-  <h2>② 供應商清單</h2>
-  <table class="table"><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>Pull API</th><th>排程</th><th></th></tr></thead>
+  <h2>② 供應商</h2>
+  <table class="table"><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>Pull API</th><th>排程</th><th>填表連結</th><th>已提交</th><th></th></tr></thead>
   <tbody id="suppliers"></tbody></table>
   <p><button class="btn btn-secondary" id="addRow">+ 新增供應商</button></p>
-</section>
-
-<p><button class="btn btn-primary" id="save">💾 儲存設定</button> <span id="saveStatus" class="muted"></span></p>
-
-<section class="card">
-  <h2>③ 供應商連結一覽</h2>
-  <table class="table"><thead><tr><th>供應商</th><th>填表連結</th><th></th></tr></thead><tbody id="links"></tbody></table>
-</section>
-
-<section class="card">
-  <h2>④ 提交狀態</h2>
-  <table class="table"><thead><tr><th>#</th><th>標題</th><th>狀態</th></tr></thead><tbody id="subs"></tbody></table>
+  <p><button class="btn btn-primary" id="save">💾 儲存設定</button> <span id="saveStatus" class="muted"></span></p>
 </section>
 
 <div class="toast" id="toast"></div>
@@ -62,12 +51,18 @@ function renderCats(enabled){
 
 function supplierRowHtml(s){
   s=s||{};
+  var linkCell = s.formUrl
+    ? '<code>'+esc(s.formUrl)+'</code> <button class="btn btn-secondary copy-link" type="button" data-url="'+esc(s.formUrl)+'">複製</button>'
+    : '<span class="muted">存檔後產生</span>';
+  var count = (s.submissionCount != null) ? s.submissionCount : 0;
   return '<tr>'+
     '<td><input class="input s-id" value="'+esc(s.id)+'"></td>'+
     '<td><input class="input s-name" value="'+esc(s.name)+'"></td>'+
     '<td><input class="input s-contact" value="'+esc(s.contact)+'"></td>'+
     '<td><input class="input s-api" value="'+esc(s.pull_api)+'"></td>'+
     '<td><input class="input s-sched" value="'+esc(s.pull_schedule)+'"></td>'+
+    '<td>'+linkCell+'</td>'+
+    '<td>'+esc(count)+'</td>'+
     '<td class="row-actions"><button class="btn btn-danger del-row" type="button">刪</button></td></tr>';
 }
 
@@ -94,40 +89,20 @@ function collectConfig(){
 }
 
 function load(){
-  fetch('/api/v1/admin/'+ORG+'/config').then(function(r){return r.json();}).then(function(cfg){
-    document.getElementById('year').value=cfg.inventory_year;
-    renderCats(cfg.enabled_categories||[]);
-    var sup=cfg.suppliers||[];
+  fetch('/api/v1/admin/'+ORG+'/overview').then(function(r){return r.json();}).then(function(data){
+    document.getElementById('year').value=data.inventory_year;
+    renderCats(data.enabled_categories||[]);
+    var sup=data.suppliers||[];
     var html=''; for(var i=0;i<sup.length;i++) html+=supplierRowHtml(sup[i]);
     document.getElementById('suppliers').innerHTML=html||supplierRowHtml({});
-    loadLinks(); loadSubs();
   });
-}
-
-function loadLinks(){
-  fetch('/api/v1/admin/'+ORG+'/links').then(function(r){return r.json();}).then(function(d){
-    var links=d.links||[]; var html='';
-    for(var i=0;i<links.length;i++){
-      html+='<tr><td>'+esc(links[i].supplierId)+'</td><td><code>'+esc(links[i].url)+'</code></td>'+
-            '<td><button class="btn btn-secondary copy-link" type="button" data-url="'+esc(links[i].url)+'">複製</button></td></tr>';
-    }
-    document.getElementById('links').innerHTML=html||'<tr><td colspan="3" class="muted">尚無連結</td></tr>';
-  });
-}
-
-function loadSubs(){
-  fetch('/api/v1/admin/'+ORG+'/submissions').then(function(r){return r.json();}).then(function(d){
-    var subs=d.submissions||[]; var html='';
-    for(var i=0;i<subs.length;i++) html+='<tr><td>'+esc(subs[i].number)+'</td><td>'+esc(subs[i].title)+'</td><td>'+esc(subs[i].status)+'</td></tr>';
-    document.getElementById('subs').innerHTML=html||'<tr><td colspan="3" class="muted">尚無提交</td></tr>';
-  }).catch(function(){ document.getElementById('subs').innerHTML='<tr><td colspan="3" class="muted">無法載入</td></tr>'; });
 }
 
 function save(){
   document.getElementById('saveStatus').textContent='儲存中…';
   fetch('/api/v1/admin/'+ORG+'/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(collectConfig())})
     .then(function(res){
-      if(res.ok){ toast('已儲存，連結已更新'); document.getElementById('saveStatus').textContent='✅ 已儲存'; loadLinks(); }
+      if(res.ok){ toast('已儲存，連結已更新'); document.getElementById('saveStatus').textContent='✅ 已儲存'; load(); }
       else { toast('儲存失敗'); document.getElementById('saveStatus').textContent='❌ 失敗'; }
     });
 }
@@ -137,8 +112,6 @@ document.getElementById('addRow').addEventListener('click', addRow);
 document.getElementById('save').addEventListener('click', save);
 document.getElementById('suppliers').addEventListener('click', function(e){
   if(e.target && e.target.classList.contains('del-row')){ var tr=e.target.closest('tr'); if(tr) tr.remove(); }
-});
-document.getElementById('links').addEventListener('click', function(e){
   if(e.target && e.target.classList.contains('copy-link')){
     navigator.clipboard.writeText(e.target.getAttribute('data-url')); toast('已複製');
   }
