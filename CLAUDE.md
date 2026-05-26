@@ -34,6 +34,7 @@
 - 部署：`git push`（觸發 GitHub Actions）或手動 `wrangler deploy`。CI 會跑 `build:templates` + `pnpm test`。
 - 租戶 repo 檔案的單一事實來源是 `scope3-worker/tenant-template/`；改完要跑 `pnpm run build:templates` 產生 `src/templates/generated.ts`（已 commit）。
 - git 直接在 `main` 開發並 push（使用者要求；勿擅自開 feature branch）。
+- 全站 HTML 頁面 CSS 用單一來源 `src/ui/theme.mjs`（oklch design tokens）；由 `/assets/app.css`（Worker 頁）與 `tenant-template/docs/app.css`（儀表板）兩管道輸出。**改樣式只改 theme.mjs**。Mermaid 圖表仍用 hex（見全域規則，oklch 僅用於 HTML CSS）。
 
 ## 常用除錯指令
 
