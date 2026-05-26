@@ -1,0 +1,61 @@
+// src/ui/theme.mjs
+// 全站唯一 CSS 來源。純 JS 字串，供 Worker（/assets/app.css）與 build-templates（docs/app.css）共用。
+export const APP_CSS = `:root {
+  --bg: oklch(0.985 0.004 250);
+  --surface: oklch(1 0 0);
+  --fg: oklch(0.27 0.02 255);
+  --muted: oklch(0.55 0.02 255);
+  --border: oklch(0.92 0.008 255);
+  --primary: oklch(0.58 0.17 256);
+  --primary-fg: oklch(0.99 0 0);
+  --primary-weak: oklch(0.95 0.03 256);
+  --danger: oklch(0.57 0.19 27);
+  --success: oklch(0.60 0.14 150);
+  --warning: oklch(0.75 0.15 85);
+  --font: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+  --text-xs: .78rem;
+  --text-sm: .88rem;
+  --text-base: 1rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.4rem;
+  --leading: 1.5;
+  --radius: 8px;
+  --gap: 16px;
+}
+* { box-sizing: border-box; }
+body { font-family: var(--font); font-size: var(--text-base); line-height: var(--leading); color: var(--fg); background: var(--bg); margin: 0; }
+.container { max-width: 960px; margin: 0 auto; padding: 24px; }
+h1 { font-size: var(--text-xl); margin: 0 0 16px; }
+h2 { font-size: var(--text-lg); margin: 0 0 16px; }
+p { margin: 8px 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+.label { display: block; font-size: var(--text-sm); color: var(--muted); margin: 12px 0 4px; }
+.input, .select { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: var(--text-base); background: var(--surface); color: var(--fg); }
+.row { display: flex; gap: 12px; }
+.row > * { flex: 1; }
+.btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: var(--text-sm); }
+.btn-primary { background: var(--primary); color: var(--primary-fg); }
+.btn-secondary { background: var(--border); color: var(--fg); }
+.btn-danger { background: var(--danger); color: var(--primary-fg); }
+.btn-lg { padding: 12px 32px; font-size: var(--text-base); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.table th, .table td { text-align: left; padding: 6px; border-bottom: 1px solid var(--border); }
+.table td input { width: 100%; }
+.muted { color: var(--muted); font-size: var(--text-sm); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: var(--text-xs); background: var(--primary-weak); color: var(--primary); }
+.cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; font-size: var(--text-sm); }
+.bar-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; font-size: var(--text-sm); }
+.bar-row .name { width: 160px; flex-shrink: 0; color: var(--muted); }
+.bar-track { flex: 1; background: var(--primary-weak); border-radius: 4px; overflow: hidden; height: 22px; }
+.bar-fill { height: 100%; background: var(--primary); }
+.bar-row .num { width: 110px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--gap); }
+.kpi-value { font-size: 1.8rem; font-weight: 700; margin-top: 6px; }
+.kpi-unit { font-size: var(--text-sm); color: var(--muted); font-weight: 400; }
+.supplier-note { color: var(--muted); font-size: var(--text-sm); margin-bottom: 24px; }
+.success-box { max-width: 480px; margin: 80px auto; text-align: center; }
+.success-box h1 { color: var(--success); }
+.toast { position: fixed; top: 16px; right: 16px; background: var(--success); color: var(--primary-fg); padding: 12px 20px; border-radius: 4px; display: none; }
+code { background: var(--primary-weak); padding: 2px 4px; border-radius: 3px; font-size: var(--text-xs); word-break: break-all; }
+footer { text-align: center; color: var(--muted); font-size: var(--text-xs); padding: 24px; }
+`;

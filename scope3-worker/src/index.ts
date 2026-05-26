@@ -9,6 +9,7 @@ import configSyncRoute from './routes/config-sync';
 import adminRoute      from './routes/admin';
 import adminApiRoute   from './routes/admin-api';
 import filesRoute      from './routes/files';
+import assetsRoute     from './routes/assets';
 import { handleQueue } from './queue/consumer';
 import { handleScheduled } from './handlers/scheduled';
 
@@ -23,6 +24,7 @@ app.route('/submit',        submitRoute);
 app.route('/admin',         adminRoute);
 app.route('/api/v1/admin',  adminApiRoute);
 app.route('/files',         filesRoute);
+app.route('/assets',        assetsRoute);
 
 export { app };
 

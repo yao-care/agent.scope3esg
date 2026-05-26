@@ -2,6 +2,7 @@
 // 將 tenant-template/** 打包成 src/templates/generated.ts（Record<path, content>）。
 import { readdirSync, readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { APP_CSS } from '../src/ui/theme.mjs';
 
 const ROOT = 'tenant-template';
 const files = {};
@@ -17,6 +18,8 @@ function walk(dir) {
     }
   }
 }
+
+writeFileSync(join(ROOT, 'docs', 'app.css'), APP_CSS);
 
 walk(ROOT);
 
