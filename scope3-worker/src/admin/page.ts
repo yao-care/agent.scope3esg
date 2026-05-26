@@ -8,55 +8,40 @@ export function adminPageHtml(org: string): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scope 3 管理 — ${org}</title>
-<style>
-  body { font-family: -apple-system, "Segoe UI", sans-serif; max-width: 900px; margin: 0 auto; padding: 24px; background: #f7f8fa; color: #1a1a1a; }
-  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin-top: 0; }
-  section { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-  label { font-size: .85rem; color: #555; }
-  input, select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-  th, td { text-align: left; padding: 6px; border-bottom: 1px solid #eee; }
-  td input { width: 100%; }
-  button { padding: 8px 16px; background: #0070f3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: .9rem; }
-  button.secondary { background: #eee; color: #333; }
-  button.danger { background: #d93f0b; }
-  .cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; font-size: .85rem; }
-  .row-actions { white-space: nowrap; }
-  .toast { position: fixed; top: 16px; right: 16px; background: #0e8a16; color: #fff; padding: 12px 20px; border-radius: 4px; display: none; }
-  code { background: #f0f0f0; padding: 2px 4px; border-radius: 3px; font-size: .8rem; word-break: break-all; }
-  .muted { color: #888; }
-</style>
+<link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+<div class="container">
 <h1>Scope 3 盤點管理 — ${org}</h1>
 
-<section>
+<section class="card">
   <h2>① 盤點設定</h2>
-  <label>盤點年度 <input id="year" type="number" style="width:100px"></label>
+  <label class="label">盤點年度 <input class="input" id="year" type="number" style="width:100px"></label>
   <p style="margin:12px 0 4px">盤查類別（Scope 3 Category）</p>
   <div class="cats" id="cats"></div>
 </section>
 
-<section>
+<section class="card">
   <h2>② 供應商清單</h2>
-  <table><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>Pull API</th><th>排程</th><th></th></tr></thead>
+  <table class="table"><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>Pull API</th><th>排程</th><th></th></tr></thead>
   <tbody id="suppliers"></tbody></table>
-  <p><button class="secondary" id="addRow">+ 新增供應商</button></p>
+  <p><button class="btn btn-secondary" id="addRow">+ 新增供應商</button></p>
 </section>
 
-<p><button id="save">💾 儲存設定</button> <span id="saveStatus" class="muted"></span></p>
+<p><button class="btn btn-primary" id="save">💾 儲存設定</button> <span id="saveStatus" class="muted"></span></p>
 
-<section>
+<section class="card">
   <h2>③ 供應商連結一覽</h2>
-  <table><thead><tr><th>供應商</th><th>填表連結</th><th></th></tr></thead><tbody id="links"></tbody></table>
+  <table class="table"><thead><tr><th>供應商</th><th>填表連結</th><th></th></tr></thead><tbody id="links"></tbody></table>
 </section>
 
-<section>
+<section class="card">
   <h2>④ 提交狀態</h2>
-  <table><thead><tr><th>#</th><th>標題</th><th>狀態</th></tr></thead><tbody id="subs"></tbody></table>
+  <table class="table"><thead><tr><th>#</th><th>標題</th><th>狀態</th></tr></thead><tbody id="subs"></tbody></table>
 </section>
 
 <div class="toast" id="toast"></div>
+</div>
 
 <script>
 var ORG = ${JSON.stringify(org)};
@@ -78,12 +63,12 @@ function renderCats(enabled){
 function supplierRowHtml(s){
   s=s||{};
   return '<tr>'+
-    '<td><input class="s-id" value="'+esc(s.id)+'"></td>'+
-    '<td><input class="s-name" value="'+esc(s.name)+'"></td>'+
-    '<td><input class="s-contact" value="'+esc(s.contact)+'"></td>'+
-    '<td><input class="s-api" value="'+esc(s.pull_api)+'"></td>'+
-    '<td><input class="s-sched" value="'+esc(s.pull_schedule)+'"></td>'+
-    '<td class="row-actions"><button class="danger del-row" type="button">刪</button></td></tr>';
+    '<td><input class="input s-id" value="'+esc(s.id)+'"></td>'+
+    '<td><input class="input s-name" value="'+esc(s.name)+'"></td>'+
+    '<td><input class="input s-contact" value="'+esc(s.contact)+'"></td>'+
+    '<td><input class="input s-api" value="'+esc(s.pull_api)+'"></td>'+
+    '<td><input class="input s-sched" value="'+esc(s.pull_schedule)+'"></td>'+
+    '<td class="row-actions"><button class="btn btn-danger del-row" type="button">刪</button></td></tr>';
 }
 
 function addRow(){ document.getElementById('suppliers').insertAdjacentHTML('beforeend', supplierRowHtml({})); }
@@ -124,7 +109,7 @@ function loadLinks(){
     var links=d.links||[]; var html='';
     for(var i=0;i<links.length;i++){
       html+='<tr><td>'+esc(links[i].supplierId)+'</td><td><code>'+esc(links[i].url)+'</code></td>'+
-            '<td><button class="secondary copy-link" type="button" data-url="'+esc(links[i].url)+'">複製</button></td></tr>';
+            '<td><button class="btn btn-secondary copy-link" type="button" data-url="'+esc(links[i].url)+'">複製</button></td></tr>';
     }
     document.getElementById('links').innerHTML=html||'<tr><td colspan="3" class="muted">尚無連結</td></tr>';
   });
