@@ -38,6 +38,16 @@ export async function getTenant(db: D1Database, installationId: number) {
   return rows[0] ?? null;
 }
 
+export async function getTenantByOrg(db: D1Database, org: string) {
+  const client = drizzle(db);
+  const rows = await client
+    .select()
+    .from(tenants)
+    .where(eq(tenants.org, org))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 interface SupplierTokenInput {
   token:      string;
   org:        string;

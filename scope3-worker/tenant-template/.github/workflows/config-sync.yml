@@ -1,0 +1,16 @@
+name: Sync Supplier Tokens
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'config.yml'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify worker to sync supplier tokens
+        run: |
+          curl -sS -X POST "https://scope3-worker.lightman-chang.workers.dev/api/v1/config-sync/${{ github.repository_owner }}" -w "\nHTTP %{http_code}\n"

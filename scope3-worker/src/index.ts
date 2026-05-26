@@ -5,6 +5,7 @@ import healthRoute     from './routes/health';
 import uploadRoute     from './routes/upload';
 import submitRoute     from './routes/submit';
 import apiSubmitRoute  from './routes/api-submit';
+import configSyncRoute from './routes/config-sync';
 import { handleQueue } from './queue/consumer';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -13,6 +14,7 @@ app.route('/webhook',       webhookRoute);
 app.route('/health',        healthRoute);
 app.route('/api/v1/upload', uploadRoute);
 app.route('/api/v1/submit', apiSubmitRoute);
+app.route('/api/v1/config-sync', configSyncRoute);
 app.route('/submit',        submitRoute);
 
 export { app };

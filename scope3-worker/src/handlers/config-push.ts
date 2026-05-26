@@ -6,17 +6,10 @@ import { generateToken, generateFormUrl, tokenExpiresAt } from '../lib/tokens';
 import { buildSupplierLinksMarkdown, upsertSupplierLinks } from '../github/supplier-links';
 import type { Bindings, GitHubPushPayload } from '../types';
 
-export async function handleConfigPush(
-  env: Bindings,
-  payload: GitHubPushPayload,
-): Promise<void> {
-  const modifiedFiles = payload.commits.flatMap(c => [...c.added, ...c.modified]);
-  if (!modifiedFiles.includes('config.yml')) return;
-
-  const org    = payload.repository.owner.login;
-  const instId = payload.installation.id;
-
-  const octokit = await getInstallationOctokit(env, instId);
+// 核心：讀 config.yml → 為新供應商產 token → 寫回 supplier-links.md。
+// 由 webhook push 與 config-sync 端點共用。
+export async function syncConfig(env: Bindings, org: string, installationId: number): Promise<void> {
+  const octokit = await getInstallationOctokit(env, installationId);
   const config  = await readTenantConfig(octokit, org);
   if (!config) return;
 
@@ -53,4 +46,10 @@ export async function handleConfigPush(
   for (const t of allTokens) tokenBySupplierId[t.supplierId] = t.token;
   const markdown = buildSupplierLinksMarkdown(env.WORKER_BASE_URL, org, config.suppliers, tokenBySupplierId);
   await upsertSupplierLinks(octokit, org, markdown);
+}
+
+export async function handleConfigPush(env: Bindings, payload: GitHubPushPayload): Promise<void> {
+  const modifiedFiles = payload.commits.flatMap(c => [...c.added, ...c.modified]);
+  if (!modifiedFiles.includes('config.yml')) return;
+  await syncConfig(env, payload.repository.owner.login, payload.installation.id);
 }
