@@ -8,6 +8,7 @@ import apiSubmitRoute  from './routes/api-submit';
 import configSyncRoute from './routes/config-sync';
 import adminRoute      from './routes/admin';
 import adminApiRoute   from './routes/admin-api';
+import filesRoute      from './routes/files';
 import { handleQueue } from './queue/consumer';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -20,6 +21,7 @@ app.route('/api/v1/config-sync', configSyncRoute);
 app.route('/submit',        submitRoute);
 app.route('/admin',         adminRoute);
 app.route('/api/v1/admin',  adminApiRoute);
+app.route('/files',         filesRoute);
 
 export { app };
 

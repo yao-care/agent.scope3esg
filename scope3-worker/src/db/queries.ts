@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
-import { tenants, supplierTokens } from './schema';
+import { tenants, supplierTokens, pullJobs, auditLog } from './schema';
 
 interface TenantInput {
   installationId: number;
@@ -82,4 +82,57 @@ export async function listSupplierTokensByOrg(db: D1Database, org: string) {
     .select()
     .from(supplierTokens)
     .where(eq(supplierTokens.org, org));
+}
+
+interface PullJobInput {
+  jobId:      string;
+  org:        string;
+  supplierId: string;
+  apiUrl:     string;
+  schedule:   string;
+}
+
+export async function upsertPullJob(db: D1Database, input: PullJobInput): Promise<void> {
+  const client = drizzle(db);
+  await client
+    .insert(pullJobs)
+    .values({ jobId: input.jobId, org: input.org, supplierId: input.supplierId, apiUrl: input.apiUrl, schedule: input.schedule, lastRunAt: null })
+    .onConflictDoUpdate({
+      target: pullJobs.jobId,
+      set: { org: input.org, supplierId: input.supplierId, apiUrl: input.apiUrl, schedule: input.schedule },
+    });
+}
+
+export async function listAllPullJobs(db: D1Database) {
+  const client = drizzle(db);
+  return client.select().from(pullJobs);
+}
+
+export async function touchPullJobLastRun(db: D1Database, jobId: string): Promise<void> {
+  const client = drizzle(db);
+  await client.update(pullJobs).set({ lastRunAt: new Date().toISOString() }).where(eq(pullJobs.jobId, jobId));
+}
+
+interface AuditLogInput {
+  org:    string;
+  action: string;
+  actor:  string;
+  target: string;
+}
+
+export async function insertAuditLog(db: D1Database, input: AuditLogInput): Promise<void> {
+  const client = drizzle(db);
+  await client.insert(auditLog).values({
+    id:        crypto.randomUUID(),
+    org:       input.org,
+    action:    input.action,
+    actor:     input.actor,
+    target:    input.target,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+export async function listAuditLogByOrg(db: D1Database, org: string) {
+  const client = drizzle(db);
+  return client.select().from(auditLog).where(eq(auditLog.org, org));
 }
