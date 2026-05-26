@@ -9,7 +9,7 @@ export default defineConfig({
       miniflare: {
         d1Databases: ['DB'],
         // 測試專用 binding；production 不設 RESEND_API_KEY（未設則略過寄信）。
-        bindings: { RESEND_API_KEY: 'test_re_key' },
+        bindings: { RESEND_API_KEY: 'test_re_key', SESSION_SECRET: 'test-session-secret' },
       },
     }),
   ],
