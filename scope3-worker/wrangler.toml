@@ -21,6 +21,9 @@ queue = "scope3-pull-jobs"
 max_batch_size = 10
 max_batch_timeout = 30
 
+[triggers]
+crons = ["0 1 * * *"]
+
 [vars]
 GITHUB_APP_ID = "3863190"
 WORKER_BASE_URL = "https://scope3-worker.lightman-chang.workers.dev"

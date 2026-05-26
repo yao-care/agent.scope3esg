@@ -1,4 +1,4 @@
-import { getSupplierToken } from '../db/queries';
+import { getSupplierToken, insertAuditLog } from '../db/queries';
 import { getInstallationOctokit } from '../github/app';
 import { createSubmissionIssue } from '../github/issue';
 import type { Bindings, Submission } from '../types';
@@ -64,5 +64,8 @@ export async function processSubmission(
   };
 
   const issueNumber = await createSubmissionIssue(octokit, input.org, submission);
+
+  await insertAuditLog(env.DB, { org: input.org, action: 'submission_created', actor: tokenRow.supplierId, target: 'issue#' + issueNumber });
+
   return { success: true, issueNumber };
 }

@@ -10,6 +10,7 @@ import adminRoute      from './routes/admin';
 import adminApiRoute   from './routes/admin-api';
 import filesRoute      from './routes/files';
 import { handleQueue } from './queue/consumer';
+import { handleScheduled } from './handlers/scheduled';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -28,4 +29,7 @@ export { app };
 export default {
   fetch: app.fetch,
   queue: handleQueue,
+  scheduled: (_event: ScheduledController, env: Bindings, ctx: ExecutionContext) => {
+    ctx.waitUntil(handleScheduled(env));
+  },
 } as ExportedHandler<Bindings>;

@@ -1,6 +1,6 @@
 import { getInstallationOctokit } from '../github/app';
 import { readTenantConfig } from '../github/config';
-import { listSupplierTokensByOrg, insertSupplierToken } from '../db/queries';
+import { listSupplierTokensByOrg, insertSupplierToken, upsertPullJob, insertAuditLog } from '../db/queries';
 import { sendOnboardingEmail } from '../email/resend';
 import { generateToken, generateFormUrl, tokenExpiresAt } from '../lib/tokens';
 import { buildSupplierLinksMarkdown, upsertSupplierLinks } from '../github/supplier-links';
@@ -17,6 +17,16 @@ export async function syncConfig(env: Bindings, org: string, installationId: num
   const existingSupplierIds = new Set(existingTokens.map(t => t.supplierId));
 
   for (const supplier of config.suppliers) {
+    if (supplier.pull_api) {
+      await upsertPullJob(env.DB, {
+        jobId:      org + ':' + supplier.id,
+        org,
+        supplierId: supplier.id,
+        apiUrl:     supplier.pull_api,
+        schedule:   supplier.pull_schedule ?? '',
+      });
+    }
+
     if (existingSupplierIds.has(supplier.id)) continue;
 
     const token   = generateToken();
@@ -46,6 +56,8 @@ export async function syncConfig(env: Bindings, org: string, installationId: num
   for (const t of allTokens) tokenBySupplierId[t.supplierId] = t.token;
   const markdown = buildSupplierLinksMarkdown(env.WORKER_BASE_URL, org, config.suppliers, tokenBySupplierId);
   await upsertSupplierLinks(octokit, org, markdown);
+
+  await insertAuditLog(env.DB, { org, action: 'config_synced', actor: 'system', target: org });
 }
 
 export async function handleConfigPush(env: Bindings, payload: GitHubPushPayload): Promise<void> {

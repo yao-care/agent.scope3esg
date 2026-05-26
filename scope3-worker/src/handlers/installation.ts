@@ -1,6 +1,6 @@
 import { getInstallationOctokit } from '../github/app';
 import { createTenantRepo } from '../github/repo';
-import { insertTenant } from '../db/queries';
+import { insertTenant, insertAuditLog } from '../db/queries';
 import type { Bindings, GitHubInstallationPayload } from '../types';
 
 export async function handleInstallation(
@@ -16,4 +16,6 @@ export async function handleInstallation(
   const repoNodeId = await createTenantRepo(octokit, org);
 
   await insertTenant(env.DB, { installationId, org, repoNodeId });
+
+  await insertAuditLog(env.DB, { org, action: 'app_installed', actor: 'github-app', target: 'scope3-inventory' });
 }
