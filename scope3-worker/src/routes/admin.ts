@@ -4,6 +4,7 @@ import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { signSession, signState, verifyState, verifySession } from '../lib/session';
 import { adminPageHtml } from '../admin/page';
+import { reviewPageHtml } from '../admin/review-page';
 import { getTenantByOrg } from '../db/queries';
 import { getInstallationOctokit } from '../github/app';
 
@@ -78,6 +79,16 @@ admin.get('/:org', async (c) => {
     return c.redirect(`/admin/${org}/login`);
   }
   return c.html(adminPageHtml(org));
+});
+
+admin.get('/:org/review', async (c) => {
+  const { org } = c.req.param();
+  const cookie = readCookie(c, SESSION_COOKIE);
+  const session = cookie ? await verifySession(cookie, c.env.SESSION_SECRET) : null;
+  if (!session || session.org !== org) {
+    return c.redirect(`/admin/${org}/login`);
+  }
+  return c.html(reviewPageHtml(org));
 });
 
 admin.get('/:org/login', async (c) => {
