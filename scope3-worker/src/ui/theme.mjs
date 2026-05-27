@@ -58,4 +58,12 @@ p { margin: 8px 0; }
 .toast { position: fixed; top: 16px; right: 16px; background: var(--success); color: var(--primary-fg); padding: 12px 20px; border-radius: 4px; display: none; }
 code { background: var(--primary-weak); padding: 2px 4px; border-radius: 3px; font-size: var(--text-xs); word-break: break-all; }
 footer { text-align: center; color: var(--muted); font-size: var(--text-xs); padding: 24px; }
+.nav { display: flex; align-items: center; gap: 16px; background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; }
+.nav-brand { font-weight: 700; color: var(--primary); font-size: var(--text-sm); }
+.nav-links { display: flex; gap: 4px; flex: 1; }
+.nav-link { padding: 6px 12px; border-radius: 4px; color: var(--fg); text-decoration: none; font-size: var(--text-sm); }
+.nav-link:hover { background: var(--primary-weak); }
+.nav-link.active { background: var(--primary-weak); color: var(--primary); font-weight: 600; }
+.nav-pending { margin-left: 6px; background: var(--danger); color: var(--primary-fg); }
+.nav-logout { flex-shrink: 0; }
 `;
