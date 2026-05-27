@@ -6,6 +6,7 @@ import { getInstallationOctokit } from '../github/app';
 import {
   listSupplierSubmissions,
   listOpenPullRequestsByPrefix,
+  getLatestRejectReason,
   closePullRequest,
   deleteBranch,
   getMainSha,
@@ -26,7 +27,8 @@ function formHtml(
   token: string,
   supplierId: string,
   approved: Record<string, unknown>[],
-  pending: Array<{ number: number; title: string; submissionId: string | undefined }>,
+  pending: Array<{ number: number; title: string; submissionId: string | undefined; needsRevision: boolean; rejectReason: string | null }>,
+  withdrawnIds: (string | undefined)[],
 ): string {
   const withdrawBtn = (sid: unknown) => `<form method="POST" action="/submit/${esc(org)}/${esc(token)}/withdraw" style="display:inline" onsubmit="return confirm('確定撤回此筆？')">
   <input type="hidden" name="submission_id" value="${esc(sid)}">
@@ -49,8 +51,15 @@ function formHtml(
   <table class="table">
     <thead><tr><th>期間</th><th>類別</th><th>活動</th><th>數量</th><th>狀態</th><th>操作</th></tr></thead>
     <tbody>
-      ${pending.map((p) => `<tr><td colspan="4">${esc(p.title)}</td><td><span class="badge">審核中</span></td><td>${p.submissionId ? withdrawBtn(p.submissionId) : ''}</td></tr>`).join('')}
-      ${approved.map((s) => `<tr><td>${esc(s.period)}</td><td>Cat.${esc(s.scope3_category)}</td><td>${esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td><span class="badge">已核定</span></td><td>${withdrawBtn(s.submission_id)}</td></tr>`).join('')}
+      ${pending.map((p) => `<tr>
+        <td colspan="4">${esc(p.title)}</td>
+        <td>${p.needsRevision ? `<span class="badge">需修改</span>` : `<span class="badge">審核中</span>`}${p.needsRevision && p.rejectReason ? `<div class="muted">退件理由：${esc(p.rejectReason)}</div>` : ''}</td>
+        <td>${p.submissionId ? `<a class="btn btn-secondary" href="/submit/${esc(org)}/${esc(token)}/edit/${esc(p.submissionId)}">編輯</a> ${withdrawBtn(p.submissionId)}` : ''}</td>
+      </tr>`).join('')}
+      ${approved.map((s) => {
+        const isWithdrawing = withdrawnIds.indexOf(s.submission_id as string | undefined) >= 0;
+        return `<tr><td>${esc(s.period)}</td><td>Cat.${esc(s.scope3_category)}</td><td>${esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td>${isWithdrawing ? '<span class="badge">撤回審核中</span>' : '<span class="badge">已核定</span>'}</td><td>${isWithdrawing ? '' : withdrawBtn(s.submission_id)}</td></tr>`;
+      }).join('')}
       ${(pending.length === 0 && approved.length === 0) ? '<tr><td colspan="6" class="muted">尚無提交紀錄</td></tr>' : ''}
     </tbody>
   </table>
@@ -140,18 +149,26 @@ submit.get('/:org/:token', async (c) => {
   }
 
   let approved: Record<string, unknown>[] = [];
-  let pending: Array<{ number: number; title: string; submissionId: string | undefined }> = [];
+  let pending: Array<{ number: number; title: string; submissionId: string | undefined; needsRevision: boolean; rejectReason: string | null }> = [];
+  let withdrawnIds: (string | undefined)[] = [];
   try {
     const tenant = await getTenantByOrg(c.env.DB, org);
     if (tenant) {
       const octokit = await getInstallationOctokit(c.env, tenant.installationId);
       approved = await listSupplierSubmissions(octokit, org, tokenRow.supplierId);
-      const prs = await listOpenPullRequestsByPrefix(octokit, org, `sub/${tokenRow.supplierId}/`);
-      pending = prs.map((p) => ({ number: p.number, title: p.title, submissionId: p.head.ref.split('/').pop() }));
+      const subPrs = await listOpenPullRequestsByPrefix(octokit, org, `sub/${tokenRow.supplierId}/`);
+      pending = await Promise.all(subPrs.map(async (p) => {
+        const submissionId = p.head.ref.split('/').pop();
+        const needsRevision = p.labels.some((l) => l.name === 'status:revision');
+        const rejectReason = needsRevision ? await getLatestRejectReason(octokit, org, p.number) : null;
+        return { number: p.number, title: p.title, submissionId, needsRevision, rejectReason };
+      }));
+      const wdPrs = await listOpenPullRequestsByPrefix(octokit, org, `withdraw/${tokenRow.supplierId}/`);
+      withdrawnIds = wdPrs.map((p) => p.head.ref.split('/').pop());
     }
   } catch { /* 查不到清單不擋填表 */ }
 
-  return c.html(formHtml(org, token, tokenRow.supplierId, approved, pending));
+  return c.html(formHtml(org, token, tokenRow.supplierId, approved, pending, withdrawnIds));
 });
 
 submit.post('/:org/:token', async (c) => {
