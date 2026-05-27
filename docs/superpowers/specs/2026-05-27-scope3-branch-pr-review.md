@@ -61,6 +61,8 @@ GitHub App 目前無 **Pull requests** 權限。branch/PR 模型需加 **Pull re
 
 ## 5. 分階段（各自一個 plan，每階段結束都是可運作狀態）
 
+> **狀態（2026-05-27）：Plan A／B／C 全部完成、部署上線、端到端實測通過。** branch/PR 模型已取代 Issue-based；Issue-based 程式碼（issue.ts 等）已移除。
+
 - **Plan A — branch/PR 核心端到端**（一次到位，避免中間不一致）：
   - GitHub helper（`src/github/pr.ts`）：取 main sha、建分支、commit on branch、開 PR、列 PR。
   - `processSubmission` 改建分支+commit+開 PR（取代建 Issue）；三管道共用。

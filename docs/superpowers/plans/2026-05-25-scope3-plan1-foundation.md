@@ -68,9 +68,9 @@ scope3-worker/
 
 ```bash
 mkdir scope3-worker && cd scope3-worker
-npm init -y
-npm install hono @octokit/app drizzle-orm
-npm install -D wrangler typescript @cloudflare/workers-types \
+pnpm init
+pnpm add hono @octokit/app drizzle-orm
+pnpm add -D wrangler typescript @cloudflare/workers-types \
   vitest @cloudflare/vitest-pool-workers drizzle-kit
 ```
 
@@ -134,8 +134,8 @@ export default defineConfig({
 - [ ] **Step 5: 驗證設定**
 
 ```bash
-npx wrangler --version
-npx tsc --noEmit
+pnpm wrangler --version
+pnpm tsc --noEmit
 ```
 
 Expected: 兩個指令都無錯誤輸出。
@@ -188,7 +188,7 @@ export interface GitHubInstallationPayload {
 - [ ] **Step 2: 確認型別無誤**
 
 ```bash
-npx tsc --noEmit
+pnpm tsc --noEmit
 ```
 
 Expected: 無錯誤。
@@ -302,10 +302,10 @@ CREATE TABLE audit_log (
 - [ ] **Step 4: 建立本地 D1 並套用 migration**
 
 ```bash
-npx wrangler d1 create scope3
+pnpm wrangler d1 create scope3
 # 將回傳的 database_id 填入 wrangler.toml
 
-npx wrangler d1 execute scope3 --local --file=migrations/0001_initial.sql
+pnpm wrangler d1 execute scope3 --local --file=migrations/0001_initial.sql
 ```
 
 Expected: `Successfully executed` 訊息，無錯誤。
@@ -366,7 +366,7 @@ describe('insertTenant / getTenant', () => {
 - [ ] **Step 3: 執行測試確認失敗**
 
 ```bash
-npx vitest run tests/db/queries.test.ts
+pnpm vitest run tests/db/queries.test.ts
 ```
 
 Expected: FAIL — `insertTenant is not a function`
@@ -409,7 +409,7 @@ export async function getTenant(db: D1Database, installationId: number) {
 - [ ] **Step 4: 執行測試確認通過**
 
 ```bash
-npx vitest run tests/db/queries.test.ts
+pnpm vitest run tests/db/queries.test.ts
 ```
 
 Expected: PASS
@@ -492,7 +492,7 @@ describe('verifyGitHubWebhook', () => {
 - [ ] **Step 2: 執行測試確認失敗**
 
 ```bash
-npx vitest run tests/middleware/github-webhook.test.ts
+pnpm vitest run tests/middleware/github-webhook.test.ts
 ```
 
 Expected: FAIL — `verifyGitHubWebhook is not a function`
@@ -543,7 +543,7 @@ export const verifyGitHubWebhook = createMiddleware<{
 - [ ] **Step 4: 執行測試確認通過**
 
 ```bash
-npx vitest run tests/middleware/github-webhook.test.ts
+pnpm vitest run tests/middleware/github-webhook.test.ts
 ```
 
 Expected: PASS（3 tests）
@@ -587,7 +587,7 @@ export async function getInstallationOctokit(env: Bindings, installationId: numb
 - [ ] **Step 2: 確認 TypeScript 無誤**
 
 ```bash
-npx tsc --noEmit
+pnpm tsc --noEmit
 ```
 
 Expected: 無錯誤。
@@ -683,7 +683,7 @@ describe('createTenantRepo', () => {
 - [ ] **Step 3: 執行測試確認失敗**
 
 ```bash
-npx vitest run tests/github/repo.test.ts
+pnpm vitest run tests/github/repo.test.ts
 ```
 
 Expected: FAIL — `createTenantRepo is not a function`
@@ -772,7 +772,7 @@ export async function createTenantRepo(octokit: Octokit, org: string): Promise<s
 - [ ] **Step 5: 執行測試確認通過**
 
 ```bash
-npx vitest run tests/github/repo.test.ts
+pnpm vitest run tests/github/repo.test.ts
 ```
 
 Expected: PASS
@@ -856,7 +856,7 @@ describe('handleInstallation', () => {
 - [ ] **Step 2: 執行測試確認失敗**
 
 ```bash
-npx vitest run tests/handlers/installation.test.ts
+pnpm vitest run tests/handlers/installation.test.ts
 ```
 
 Expected: FAIL — `handleInstallation is not a function`
@@ -889,7 +889,7 @@ export async function handleInstallation(
 - [ ] **Step 4: 執行測試確認通過**
 
 ```bash
-npx vitest run tests/handlers/installation.test.ts
+pnpm vitest run tests/handlers/installation.test.ts
 ```
 
 Expected: PASS（2 tests）
@@ -971,7 +971,7 @@ export default app;
 - [ ] **Step 4: 執行全部測試確認綠燈**
 
 ```bash
-npx vitest run
+pnpm vitest run
 ```
 
 Expected: 全部 PASS
@@ -979,7 +979,7 @@ Expected: 全部 PASS
 - [ ] **Step 5: 本地啟動確認 `/health` 回應**
 
 ```bash
-npx wrangler dev --local
+pnpm wrangler dev --local
 curl http://localhost:8787/health
 ```
 
@@ -1020,7 +1020,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - run: npm test
 
@@ -1098,7 +1098,7 @@ wrangler secret put GITHUB_APP_CLIENT_SECRET
 - [ ] **Step 3: 部署 Worker**
 
 ```bash
-npm run deploy
+pnpm deploy
 ```
 
 Expected: `https://scope3-worker.<your-account>.workers.dev` 部署成功。
@@ -1113,7 +1113,7 @@ Expected: `https://scope3-worker.<your-account>.workers.dev` 部署成功。
 
 Plan 1 完成時，以下全部成立：
 
-- [ ] `npx vitest run` 全部 PASS（middleware、handler、db queries、repo 建立）
+- [ ] `pnpm vitest run` 全部 PASS（middleware、handler、db queries、repo 建立）
 - [ ] `GET /health` 回傳 `{"status":"ok"}`
 - [ ] 測試 org 安裝 GitHub App 後，`scope3-inventory` repo 自動建立
 - [ ] Repo 含有 `config.yml`、Issue Template、22 個 Labels（5 status + 15 cat + 2 validation）
