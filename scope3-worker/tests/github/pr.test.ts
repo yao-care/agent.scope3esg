@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions, closePullRequest, deleteBranch, getFileOnBranch, getPullChecks, mergePullRequest, addLabelToPR, commentOnPR } from '../../src/github/pr';
+import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions, closePullRequest, deleteBranch, getFileOnBranch, getPullChecks, mergePullRequest, addLabelToPR, commentOnPR, updateFileOnBranch, removeLabelFromPR, getLatestRejectReason } from '../../src/github/pr';
 
 function makeOctokit() {
   return {
     request: vi.fn(async (route: string, params?: any) => {
       if (route === 'GET /repos/{owner}/{repo}/git/ref/{ref}') return { data: { object: { sha: 'mainsha123' } } };
       if (route === 'POST /repos/{owner}/{repo}/git/refs') return { data: {} };
+      if (route === 'PUT /repos/{owner}/{repo}/contents/{path}' && params?.sha === 'oldsha') return { data: { commit: { sha: 'newcommit' } } };
       if (route === 'PUT /repos/{owner}/{repo}/contents/{path}') return { data: { commit: { sha: 'c1' } } };
       if (route === 'POST /repos/{owner}/{repo}/pulls') return { data: { number: 7 } };
       if (route === 'PATCH /repos/{owner}/{repo}/pulls/{pull_number}') return { data: { state: 'closed' } };
@@ -28,7 +29,15 @@ function makeOctokit() {
       }
       if (route === 'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge') return { data: { merged: true } };
       if (route === 'POST /repos/{owner}/{repo}/issues/{issue_number}/labels') return { data: [{ name: 'status:revision' }] };
+      if (route === 'DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}') return { data: [] };
       if (route === 'POST /repos/{owner}/{repo}/issues/{issue_number}/comments') return { data: { id: 1 } };
+      if (route === 'GET /repos/{owner}/{repo}/issues/{issue_number}/comments') {
+        return { data: [
+          { body: '## ⚠️ 驗證發現問題\n單位錯誤' },
+          { body: '<!-- reject -->\n**退件理由**：請改用 kWh' },
+          { body: '一般留言' },
+        ] };
+      }
       if (route === 'GET /repos/{owner}/{repo}/commits/{ref}/check-runs') {
         if (params?.ref === 'failsha') return { data: { check_runs: [{ conclusion: 'success' }, { conclusion: 'failure' }] } };
         if (params?.ref === 'pendsha') return { data: { check_runs: [] } };
@@ -133,5 +142,20 @@ describe('pr helpers', () => {
   it('commentOnPR posts a comment body', async () => {
     await commentOnPR(octokit as any, 'acme', 7, 'hello');
     expect(octokit.request).toHaveBeenCalledWith('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', expect.objectContaining({ issue_number: 7, body: 'hello' }));
+  });
+
+  it('updateFileOnBranch PUTs with branch and sha', async () => {
+    await updateFileOnBranch(octokit as any, 'acme', 'sub/SUP001/aaa', 'submissions/SUP001/aaa.json', '{}', 'oldsha', 'edit');
+    expect(octokit.request).toHaveBeenCalledWith('PUT /repos/{owner}/{repo}/contents/{path}', expect.objectContaining({ branch: 'sub/SUP001/aaa', sha: 'oldsha', path: 'submissions/SUP001/aaa.json' }));
+  });
+
+  it('removeLabelFromPR deletes the named label', async () => {
+    await removeLabelFromPR(octokit as any, 'acme', 7, 'status:revision');
+    expect(octokit.request).toHaveBeenCalledWith('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}', expect.objectContaining({ issue_number: 7, name: 'status:revision' }));
+  });
+
+  it('getLatestRejectReason returns the reason from the last reject-marked comment', async () => {
+    const r = await getLatestRejectReason(octokit as any, 'acme', 7);
+    expect(r).toBe('請改用 kWh');
   });
 });

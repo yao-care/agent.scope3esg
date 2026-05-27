@@ -130,6 +130,43 @@ export async function commentOnPR(octokit: Octokit, org: string, prNumber: numbe
   });
 }
 
+// 更新分支上既有檔（原地編輯；需該檔在該分支的 blob sha，與 commitFileToBranch 的差別在帶 sha）。
+export async function updateFileOnBranch(octokit: Octokit, org: string, branch: string, path: string, content: string, sha: string, message: string): Promise<void> {
+  await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
+    owner: org, repo: REPO, path, message, content: toBase64(content), branch, sha,
+  });
+}
+
+// 移除 PR 的某 label（label 不存在會 404，視為已移除而忽略）。
+export async function removeLabelFromPR(octokit: Octokit, org: string, prNumber: number, label: string): Promise<void> {
+  try {
+    await octokit.request('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}', {
+      owner: org, repo: REPO, issue_number: prNumber, name: label,
+    });
+  } catch { /* label 不存在 → 忽略 */ }
+}
+
+// 讀 PR 留言，取最後一則含 <!-- reject --> 標記的退件理由內文（不與 validate 留言混淆）。
+// per_page=100；>100 留言為已知邊界（罕見）。
+export async function getLatestRejectReason(octokit: Octokit, org: string, prNumber: number): Promise<string | null> {
+  try {
+    const { data } = await octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+      owner: org, repo: REPO, issue_number: prNumber, per_page: 100,
+    });
+    const comments = (data as Array<{ body?: string }>) ?? [];
+    for (let i = comments.length - 1; i >= 0; i--) {
+      const body = comments[i].body ?? '';
+      if (body.includes('<!-- reject -->')) {
+        const m = body.match(/\*{0,2}退件理由\*{0,2}[:：]\s*([\s\S]*)$/);
+        return m ? m[1].trim() : body.replace('<!-- reject -->', '').trim();
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function listSupplierSubmissions(octokit: Octokit, org: string, supplierId: string): Promise<Record<string, unknown>[]> {
   let listing: Array<{ name: string; path: string; type: string }>;
   try {
