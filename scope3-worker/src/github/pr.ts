@@ -44,6 +44,35 @@ export async function listOpenPullRequestsByPrefix(octokit: Octokit, org: string
   return prs.filter((p) => p.head?.ref?.startsWith(headPrefix));
 }
 
+export async function closePullRequest(octokit: Octokit, org: string, prNumber: number): Promise<void> {
+  await octokit.request('PATCH /repos/{owner}/{repo}/pulls/{pull_number}', {
+    owner: org, repo: REPO, pull_number: prNumber, state: 'closed',
+  });
+}
+
+export async function deleteBranch(octokit: Octokit, org: string, branch: string): Promise<void> {
+  await octokit.request('DELETE /repos/{owner}/{repo}/git/refs/{ref}', {
+    owner: org, repo: REPO, ref: `heads/${branch}`,
+  });
+}
+
+// 取 main 上某路徑檔案的 sha（更新/刪除需要）
+export async function getFileSha(octokit: Octokit, org: string, path: string): Promise<string | null> {
+  try {
+    const { data } = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { owner: org, repo: REPO, path });
+    return (data as { sha?: string }).sha ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// 在分支上刪除檔案（撤回已核定：開分支刪 main 檔 → PR）
+export async function deleteFileViaBranch(octokit: Octokit, org: string, branch: string, path: string, sha: string, message: string): Promise<void> {
+  await octokit.request('DELETE /repos/{owner}/{repo}/contents/{path}', {
+    owner: org, repo: REPO, path, message, sha, branch,
+  });
+}
+
 export async function listSupplierSubmissions(octokit: Octokit, org: string, supplierId: string): Promise<Record<string, unknown>[]> {
   let listing: Array<{ name: string; path: string; type: string }>;
   try {

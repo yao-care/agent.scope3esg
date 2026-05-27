@@ -3,7 +3,17 @@ import type { Bindings, Variables } from '../types';
 import { getSupplierToken, getTenantByOrg } from '../db/queries';
 import { processSubmission } from '../handlers/submission';
 import { getInstallationOctokit } from '../github/app';
-import { listSupplierSubmissions, listOpenPullRequestsByPrefix } from '../github/pr';
+import {
+  listSupplierSubmissions,
+  listOpenPullRequestsByPrefix,
+  closePullRequest,
+  deleteBranch,
+  getMainSha,
+  createBranch,
+  getFileSha,
+  deleteFileViaBranch,
+  openPullRequest,
+} from '../github/pr';
 
 const submit = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -16,8 +26,12 @@ function formHtml(
   token: string,
   supplierId: string,
   approved: Record<string, unknown>[],
-  pending: Array<{ number: number; title: string }>,
+  pending: Array<{ number: number; title: string; submissionId: string | undefined }>,
 ): string {
+  const withdrawBtn = (sid: unknown) => `<form method="POST" action="/submit/${esc(org)}/${esc(token)}/withdraw" style="display:inline" onsubmit="return confirm('確定撤回此筆？')">
+  <input type="hidden" name="submission_id" value="${esc(sid)}">
+  <button class="btn btn-danger" type="submit">撤回</button>
+</form>`;
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -33,13 +47,14 @@ function formHtml(
 <section class="card">
   <h2>我的提交紀錄</h2>
   <table class="table">
-    <thead><tr><th>期間</th><th>類別</th><th>活動</th><th>數量</th><th>狀態</th></tr></thead>
+    <thead><tr><th>期間</th><th>類別</th><th>活動</th><th>數量</th><th>狀態</th><th>操作</th></tr></thead>
     <tbody>
-      ${pending.map((p) => `<tr><td colspan="4">${esc(p.title)}</td><td><span class="badge">審核中</span></td></tr>`).join('')}
-      ${approved.map((s) => `<tr><td>${esc(s.period)}</td><td>Cat.${esc(s.scope3_category)}</td><td>${esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td><span class="badge">已核定</span></td></tr>`).join('')}
-      ${(pending.length === 0 && approved.length === 0) ? '<tr><td colspan="5" class="muted">尚無提交紀錄</td></tr>' : ''}
+      ${pending.map((p) => `<tr><td colspan="4">${esc(p.title)}</td><td><span class="badge">審核中</span></td><td>${p.submissionId ? withdrawBtn(p.submissionId) : ''}</td></tr>`).join('')}
+      ${approved.map((s) => `<tr><td>${esc(s.period)}</td><td>Cat.${esc(s.scope3_category)}</td><td>${esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td><span class="badge">已核定</span></td><td>${withdrawBtn(s.submission_id)}</td></tr>`).join('')}
+      ${(pending.length === 0 && approved.length === 0) ? '<tr><td colspan="6" class="muted">尚無提交紀錄</td></tr>' : ''}
     </tbody>
   </table>
+  <p class="muted">如需修改，請先撤回該筆，再於下方重新填寫提交。</p>
 </section>
 <section class="card">
 <form method="POST" enctype="multipart/form-data">
@@ -125,14 +140,14 @@ submit.get('/:org/:token', async (c) => {
   }
 
   let approved: Record<string, unknown>[] = [];
-  let pending: Array<{ number: number; title: string }> = [];
+  let pending: Array<{ number: number; title: string; submissionId: string | undefined }> = [];
   try {
     const tenant = await getTenantByOrg(c.env.DB, org);
     if (tenant) {
       const octokit = await getInstallationOctokit(c.env, tenant.installationId);
       approved = await listSupplierSubmissions(octokit, org, tokenRow.supplierId);
       const prs = await listOpenPullRequestsByPrefix(octokit, org, `sub/${tokenRow.supplierId}/`);
-      pending = prs.map((p) => ({ number: p.number, title: p.title }));
+      pending = prs.map((p) => ({ number: p.number, title: p.title, submissionId: p.head.ref.split('/').pop() }));
     }
   } catch { /* 查不到清單不擋填表 */ }
 
@@ -176,6 +191,41 @@ submit.post('/:org/:token', async (c) => {
   }
 
   return c.html(successHtml());
+});
+
+submit.post('/:org/:token/withdraw', async (c) => {
+  const { org, token } = c.req.param();
+  const tokenRow = await getSupplierToken(c.env.DB, token);
+  if (!tokenRow || tokenRow.org !== org) return c.text('無效的連結', 401);
+  const form = await c.req.formData();
+  const submissionId = String(form.get('submission_id') ?? '');
+  if (!submissionId) return c.text('缺少 submission_id', 400);
+
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.text('租戶不存在', 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  const branch = `sub/${tokenRow.supplierId}/${submissionId}`;
+  const path = `submissions/${tokenRow.supplierId}/${submissionId}.json`;
+
+  // 未核定：有 open PR → 關 PR + 刪分支
+  const prs = await listOpenPullRequestsByPrefix(octokit, org, branch);
+  const exact = prs.find((p) => p.head.ref === branch);
+  if (exact) {
+    await closePullRequest(octokit, org, exact.number);
+    await deleteBranch(octokit, org, branch).catch(() => {});
+    return c.redirect(`/submit/${org}/${token}`);
+  }
+
+  // 已核定：開分支刪 main 檔 + 開撤回 PR（需盤查員 merge 才生效）
+  const sha = await getFileSha(octokit, org, path);
+  if (sha) {
+    const wbranch = `withdraw/${tokenRow.supplierId}/${submissionId}`;
+    const mainSha = await getMainSha(octokit, org);
+    await createBranch(octokit, org, wbranch, mainSha);
+    await deleteFileViaBranch(octokit, org, wbranch, path, sha, `withdraw: ${tokenRow.supplierId} ${submissionId}`);
+    await openPullRequest(octokit, org, wbranch, `[撤回] ${tokenRow.supplierId} ${submissionId}`, '供應商要求撤回此筆已核定提交，請盤查員確認後 merge。');
+  }
+  return c.redirect(`/submit/${org}/${token}`);
 });
 
 export default submit;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions } from '../../src/github/pr';
+import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions, closePullRequest, deleteBranch } from '../../src/github/pr';
 
 function makeOctokit() {
   return {
@@ -8,6 +8,9 @@ function makeOctokit() {
       if (route === 'POST /repos/{owner}/{repo}/git/refs') return { data: {} };
       if (route === 'PUT /repos/{owner}/{repo}/contents/{path}') return { data: { commit: { sha: 'c1' } } };
       if (route === 'POST /repos/{owner}/{repo}/pulls') return { data: { number: 7 } };
+      if (route === 'PATCH /repos/{owner}/{repo}/pulls/{pull_number}') return { data: { state: 'closed' } };
+      if (route === 'DELETE /repos/{owner}/{repo}/git/refs/{ref}') return { data: {} };
+      if (route === 'DELETE /repos/{owner}/{repo}/contents/{path}') return { data: {} };
       if (route === 'GET /repos/{owner}/{repo}/pulls') return { data: [
         { number: 7, title: '[S1] x', head: { ref: 'sub/SUP001/aaa' } },
         { number: 8, title: '[S2] y', head: { ref: 'sub/SUP002/bbb' } },
@@ -56,6 +59,15 @@ describe('pr helpers', () => {
     const prs = await listOpenPullRequestsByPrefix(octokit as any, 'acme', 'sub/SUP001/');
     expect(prs.length).toBe(1);
     expect(prs[0].number).toBe(7);
+  });
+
+  it('closePullRequest patches state closed', async () => {
+    await closePullRequest(octokit as any, 'acme', 7);
+    expect(octokit.request).toHaveBeenCalledWith('PATCH /repos/{owner}/{repo}/pulls/{pull_number}', expect.objectContaining({ owner: 'acme', repo: 'scope3-inventory', pull_number: 7, state: 'closed' }));
+  });
+  it('deleteBranch deletes the ref', async () => {
+    await deleteBranch(octokit as any, 'acme', 'sub/SUP001/aaa');
+    expect(octokit.request).toHaveBeenCalledWith('DELETE /repos/{owner}/{repo}/git/refs/{ref}', expect.objectContaining({ owner: 'acme', repo: 'scope3-inventory', ref: 'heads/sub/SUP001/aaa' }));
   });
 
   it('listSupplierSubmissions reads merged submission files for a supplier', async () => {
