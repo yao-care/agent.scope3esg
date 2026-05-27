@@ -37,6 +37,7 @@ function dashboardHtml(org: string): string {
 ${renderNav(org, 'dashboard')}
 <div class="container">
 <h1>Scope 3 碳排儀表板 — ${org}</h1>
+<p><label class="label" style="display:inline">盤點年度 </label><select class="select" id="year" style="max-width:200px;display:inline-block"></select></p>
 <p class="muted" id="subtitle">載入中…</p>
 <div class="kpis" id="kpis"></div>
 <section class="card"><h2>各類別排放量（kgCO₂e）</h2><div id="by-category"></div></section>
@@ -57,21 +58,30 @@ function bars(id, rows){
     return '<div class="bar-row"><span class="name">'+esc(r.name)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+pct+'%"></span></span><span class="num">'+fmt(r.value)+'</span></div>';
   }).join('');
 }
+function loadDash(){
+  var y=document.getElementById('year').value;
+  fetch('/api/v1/admin/'+ORG+'/dashboard-data'+(y?'?year='+encodeURIComponent(y):'')).then(function(r){return r.json();}).then(function(k){
+    document.getElementById('subtitle').textContent='共 '+k.submissionCount+' 筆已核定資料 ｜ 更新於 '+new Date().toLocaleString('zh-TW');
+    var cards=[
+      {label:'Total Scope 3', value:fmt(k.totalCo2e/1000), unit:'tCO₂e'},
+      {label:'供應商數', value:k.supplierCount, unit:'家'},
+      {label:'已核定筆數', value:k.submissionCount, unit:'筆'},
+      {label:'涵蓋類別數', value:Object.keys(k.byCategory).length, unit:'類'}
+    ];
+    document.getElementById('kpis').innerHTML=cards.map(function(c){
+      return '<div class="card"><div class="muted">'+c.label+'</div><div class="kpi-value">'+c.value+' <span class="kpi-unit">'+c.unit+'</span></div></div>';
+    }).join('');
+    bars('by-category', Object.keys(k.byCategory).map(function(cat){return {name:'Cat.'+cat+' '+(CAT_NAMES[cat-1]||''), value:k.byCategory[cat]};}).sort(function(a,b){return b.value-a.value;}));
+    bars('top-suppliers', k.topSuppliers.map(function(s){return {name:s.supplier_id, value:s.co2e};}));
+    bars('by-activity', Object.keys(k.byActivity).map(function(a){return {name:a, value:k.byActivity[a]};}).sort(function(a,b){return b.value-a.value;}));
+  }).catch(function(){ document.getElementById('subtitle').textContent='無法載入資料'; });
+}
 fetch('/api/v1/admin/'+ORG+'/dashboard-data').then(function(r){return r.json();}).then(function(k){
-  document.getElementById('subtitle').textContent='共 '+k.submissionCount+' 筆已核定資料 ｜ 更新於 '+new Date().toLocaleString('zh-TW');
-  var cards=[
-    {label:'Total Scope 3', value:fmt(k.totalCo2e/1000), unit:'tCO₂e'},
-    {label:'供應商數', value:k.supplierCount, unit:'家'},
-    {label:'已核定筆數', value:k.submissionCount, unit:'筆'},
-    {label:'涵蓋類別數', value:Object.keys(k.byCategory).length, unit:'類'}
-  ];
-  document.getElementById('kpis').innerHTML=cards.map(function(c){
-    return '<div class="card"><div class="muted">'+c.label+'</div><div class="kpi-value">'+c.value+' <span class="kpi-unit">'+c.unit+'</span></div></div>';
-  }).join('');
-  bars('by-category', Object.keys(k.byCategory).map(function(cat){return {name:'Cat.'+cat+' '+(CAT_NAMES[cat-1]||''), value:k.byCategory[cat]};}).sort(function(a,b){return b.value-a.value;}));
-  bars('top-suppliers', k.topSuppliers.map(function(s){return {name:s.supplier_id, value:s.co2e};}));
-  bars('by-activity', Object.keys(k.byActivity).map(function(a){return {name:a, value:k.byActivity[a]};}).sort(function(a,b){return b.value-a.value;}));
-}).catch(function(){ document.getElementById('subtitle').textContent='無法載入資料'; });
+  var sel=document.getElementById('year');
+  sel.innerHTML='<option value="">全部年度</option>'+(k.availableYears||[]).map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join('');
+  sel.addEventListener('change', loadDash);
+  loadDash();
+});
 </script>
 </body>
 </html>`;
