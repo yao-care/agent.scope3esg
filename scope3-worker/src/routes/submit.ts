@@ -14,6 +14,9 @@ import {
   getFileSha,
   deleteFileViaBranch,
   openPullRequest,
+  getFileOnBranch,
+  updateFileOnBranch,
+  removeLabelFromPR,
 } from '../github/pr';
 
 const submit = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -131,6 +134,48 @@ function formHtml(
 </html>`;
 }
 
+function editFormHtml(org: string, token: string, supplierId: string, submissionId: string, data: Record<string, unknown>): string {
+  const d = data as { scope3_category?: number; period?: string; activity_type?: string; amount?: number; unit?: string };
+  return `<!DOCTYPE html>
+<html lang="zh-Hant">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>編輯提交</title><link rel="stylesheet" href="/assets/app.css"></head>
+<body><div class="container">
+<h1>編輯提交</h1>
+<p class="supplier-note">供應商：<strong>${esc(supplierId)}</strong>｜提交：${esc(submissionId)}</p>
+<section class="card">
+<form method="POST" action="/submit/${esc(org)}/${esc(token)}/edit/${esc(submissionId)}" enctype="multipart/form-data">
+  <label class="label">盤點類別 (Scope 3 Category)</label>
+  <select class="select" name="scope3_category" required>
+    ${Array.from({length:15},(_,i)=>`<option value="${i+1}" ${Number(d.scope3_category)===i+1?'selected':''}>Category ${i+1}</option>`).join('')}
+  </select>
+  <label class="label">期間（例：2025-Q1）</label>
+  <input class="input" name="period" value="${esc(d.period)}" required pattern="\\d{4}-Q[1-4]">
+  <label class="label">活動類型</label>
+  <select class="select" name="activity_type" id="activity_type" required>
+    ${['electricity','natural_gas','diesel','water','waste','product','transport'].map((a)=>`<option value="${a}" ${d.activity_type===a?'selected':''}>${a}</option>`).join('')}
+  </select>
+  <div class="row">
+    <div><label class="label">數量</label><input class="input" name="amount" type="number" step="any" value="${esc(d.amount)}" required></div>
+    <div><label class="label">單位</label><select class="select" name="unit" id="unit" required></select></div>
+  </div>
+  <label class="label">補充佐證文件（可選；會附加到原佐證）</label>
+  <input class="input" name="files" type="file" multiple accept=".pdf,.xlsx,.csv,.jpg,.png">
+  <button class="btn btn-primary btn-lg" type="submit">更新並重新送審</button>
+</form>
+<p><a class="btn btn-secondary" href="/submit/${esc(org)}/${esc(token)}">取消，返回清單</a></p>
+</section>
+<script>
+  var ACTIVITY_UNITS = { electricity:[['kWh','kWh']], natural_gas:[['Nm3','Nm3']], diesel:[['L','公升 (L)']], water:[['ton','公噸 (ton)']], waste:[['ton','公噸 (ton)'],['kg','公斤 (kg)']], product:[['pcs','件 (pcs)'],['kg','公斤 (kg)'],['ton','公噸 (ton)']], transport:[['km','公里 (km)']] };
+  var actEl=document.getElementById('activity_type'), unitEl=document.getElementById('unit');
+  var CUR_UNIT=${JSON.stringify(d.unit ?? '')};
+  function syncUnits(){ var opts=ACTIVITY_UNITS[actEl.value]||[]; unitEl.innerHTML=opts.map(function(o){return '<option value="'+o[0]+'" '+(o[0]===CUR_UNIT?'selected':'')+'>'+o[1]+'</option>';}).join(''); }
+  actEl.addEventListener('change', function(){ CUR_UNIT=''; syncUnits(); });
+  syncUnits();
+</script>
+</div></body></html>`;
+}
+
 function successHtml(): string {
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -241,6 +286,64 @@ submit.post('/:org/:token/withdraw', async (c) => {
     await createBranch(octokit, org, wbranch, mainSha);
     await deleteFileViaBranch(octokit, org, wbranch, path, sha, `withdraw: ${tokenRow.supplierId} ${submissionId}`);
     await openPullRequest(octokit, org, wbranch, `[撤回] ${tokenRow.supplierId} ${submissionId}`, '供應商要求撤回此筆已核定提交，請盤查員確認後 merge。');
+  }
+  return c.redirect(`/submit/${org}/${token}`);
+});
+
+submit.get('/:org/:token/edit/:submissionId', async (c) => {
+  const { org, token, submissionId } = c.req.param();
+  const tokenRow = await getSupplierToken(c.env.DB, token);
+  if (!tokenRow || tokenRow.org !== org) return c.text('無效的連結', 401);
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.text('租戶不存在', 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  const branch = `sub/${tokenRow.supplierId}/${submissionId}`;
+  const path = `submissions/${tokenRow.supplierId}/${submissionId}.json`;
+  const file = await getFileOnBranch(octokit, org, branch, path);
+  if (!file) return c.text('找不到可編輯的提交（可能已核定或不存在）', 404);
+  return c.html(editFormHtml(org, token, tokenRow.supplierId, submissionId, file.data));
+});
+
+submit.post('/:org/:token/edit/:submissionId', async (c) => {
+  const { org, token, submissionId } = c.req.param();
+  const tokenRow = await getSupplierToken(c.env.DB, token);
+  if (!tokenRow || tokenRow.org !== org) return c.text('無效的連結', 401);
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.text('租戶不存在', 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  const branch = `sub/${tokenRow.supplierId}/${submissionId}`;
+  const path = `submissions/${tokenRow.supplierId}/${submissionId}.json`;
+
+  const file = await getFileOnBranch(octokit, org, branch, path);
+  if (!file) return c.text('找不到可編輯的提交', 404);
+
+  const formData = await c.req.formData();
+  const evidenceUrls: string[] = Array.isArray((file.data as { evidence_urls?: string[] }).evidence_urls)
+    ? [...((file.data as { evidence_urls: string[] }).evidence_urls)] : [];
+  const files = formData.getAll('files') as unknown as File[];
+  for (const f of files) {
+    if (typeof f?.size !== 'number' || f.size === 0) continue;
+    const ext = f.name.split('.').pop() ?? 'bin';
+    const key = `${org}/${crypto.randomUUID()}.${ext}`;
+    await c.env.FILES.put(key, await f.arrayBuffer(), { httpMetadata: { contentType: f.type } });
+    evidenceUrls.push(`${c.env.WORKER_BASE_URL}/files/${key}`);
+  }
+
+  const updated = {
+    ...file.data,
+    scope3_category: Number(formData.get('scope3_category')),
+    period: String(formData.get('period')),
+    activity_type: String(formData.get('activity_type')),
+    amount: Number(formData.get('amount')),
+    unit: String(formData.get('unit')),
+    evidence_urls: evidenceUrls,
+  };
+  await updateFileOnBranch(octokit, org, branch, path, JSON.stringify(updated, null, 2), file.sha, `edit: ${tokenRow.supplierId} ${submissionId}`);
+
+  const prs = await listOpenPullRequestsByPrefix(octokit, org, branch);
+  const exact = prs.find((p) => p.head.ref === branch);
+  if (exact && exact.labels.some((l) => l.name === 'status:revision')) {
+    await removeLabelFromPR(octokit, org, exact.number, 'status:revision');
   }
   return c.redirect(`/submit/${org}/${token}`);
 });
