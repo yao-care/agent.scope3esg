@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions, closePullRequest, deleteBranch } from '../../src/github/pr';
+import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions, closePullRequest, deleteBranch, getFileOnBranch, getPullChecks } from '../../src/github/pr';
 
 function makeOctokit() {
   return {
@@ -21,6 +21,13 @@ function makeOctokit() {
       if (route === 'GET /repos/{owner}/{repo}/contents/{path}' && params?.path === 'submissions/SUP001/a.json') {
         const json = JSON.stringify({ submission_id: 'a', supplier_id: 'SUP001', scope3_category: 1, period: '2025-Q1', activity_type: 'electricity', amount: 100, unit: 'kWh' });
         return { data: { content: Buffer.from(json, 'utf-8').toString('base64') } };
+      }
+      if (route === 'GET /repos/{owner}/{repo}/contents/{path}' && params?.ref === 'sub/SUP001/aaa') {
+        const json = JSON.stringify({ submission_id: 'aaa', supplier_id: 'SUP001', scope3_category: 1, period: '2025-Q1', activity_type: 'electricity', amount: 100, unit: 'kWh' });
+        return { data: { content: Buffer.from(json, 'utf-8').toString('base64'), sha: 'blobsha1' } };
+      }
+      if (route === 'GET /repos/{owner}/{repo}/commits/{ref}/check-runs') {
+        return { data: { check_runs: [{ conclusion: 'success' }] } };
       }
       return { data: {} };
     }),
@@ -82,5 +89,16 @@ describe('pr helpers', () => {
     expect(subs.length).toBe(1);
     expect(subs[0].submission_id).toBe('a');
     expect(subs[0].period).toBe('2025-Q1');
+  });
+
+  it('getFileOnBranch returns parsed JSON and blob sha', async () => {
+    const r = await getFileOnBranch(octokit as any, 'acme', 'sub/SUP001/aaa', 'submissions/SUP001/aaa.json');
+    expect(r).not.toBeNull();
+    expect(r!.sha).toBe('blobsha1');
+    expect((r!.data as any).period).toBe('2025-Q1');
+  });
+
+  it('getPullChecks maps check-run conclusions to a status', async () => {
+    expect(await getPullChecks(octokit as any, 'acme', 'anysha')).toBe('success');
   });
 });

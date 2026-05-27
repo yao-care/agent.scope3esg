@@ -77,6 +77,40 @@ export async function deleteFileViaBranch(octokit: Octokit, org: string, branch:
   });
 }
 
+// 讀分支上某檔的 JSON 內容與 blob sha（審核詳情／原地編輯用）。
+export async function getFileOnBranch(
+  octokit: Octokit, org: string, branch: string, path: string,
+): Promise<{ data: Record<string, unknown>; sha: string } | null> {
+  try {
+    const { data } = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+      owner: org, repo: REPO, path, ref: branch,
+    });
+    const d = data as { content?: string; sha?: string };
+    if (!d.content || !d.sha) return null;
+    const bytes = Uint8Array.from(atob(d.content.replace(/\n/g, '')), (c) => c.charCodeAt(0));
+    return { data: JSON.parse(new TextDecoder('utf-8').decode(bytes)), sha: d.sha };
+  } catch {
+    return null;
+  }
+}
+
+// 查某 commit 的 check-runs 結論，映射為 validate 狀態三態。
+// 需 App Checks:Read；無權限／查無一律回 'pending'（灰／驗證中），不阻擋主流程。
+export async function getPullChecks(octokit: Octokit, org: string, sha: string): Promise<'success' | 'failure' | 'pending'> {
+  try {
+    const { data } = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}/check-runs', {
+      owner: org, repo: REPO, ref: sha,
+    });
+    const runs = (data as { check_runs?: Array<{ conclusion: string | null }> }).check_runs ?? [];
+    if (runs.length === 0) return 'pending';
+    if (runs.some((r) => r.conclusion === 'failure')) return 'failure';
+    if (runs.every((r) => r.conclusion === 'success')) return 'success';
+    return 'pending';
+  } catch {
+    return 'pending';
+  }
+}
+
 export async function listSupplierSubmissions(octokit: Octokit, org: string, supplierId: string): Promise<Record<string, unknown>[]> {
   let listing: Array<{ name: string; path: string; type: string }>;
   try {
