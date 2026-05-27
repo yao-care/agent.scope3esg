@@ -70,4 +70,60 @@ describe('admin API auth', () => {
     const body = await res.json<{ pending: number }>();
     expect(body.pending).toBe(3);
   });
+
+  it('GET /:org/review/list returns submission PRs with details + validate status', async () => {
+    // listOpenPullRequestsByPrefix called twice (sub/, withdraw/)
+    // First call (sub/): returns 1 PR with head.sha and labels
+    // Second call (withdraw/): returns empty
+    // getFileOnBranch call: returns base64-encoded JSON
+    // getPullChecks call: returns check-runs with success
+    const submissionData = { supplier_id: 'SUP001', scope3_category: 1 };
+    const base64Content = btoa(JSON.stringify(submissionData));
+    const mockRequest = vi.fn().mockImplementation((route: string, opts: Record<string, unknown>) => {
+      if (route === 'GET /repos/{owner}/{repo}/pulls') {
+        const allPRs = [
+          { number: 7, title: 'SUP001 submission', head: { ref: 'sub/SUP001/aaa', sha: 'sha-abc' }, labels: [] },
+        ];
+        // filter by head prefix the same way listOpenPullRequestsByPrefix does
+        return Promise.resolve({ data: allPRs });
+      }
+      if (route === 'GET /repos/{owner}/{repo}/contents/{path}') {
+        // getFileOnBranch
+        return Promise.resolve({ data: { content: base64Content + '\n', sha: 'blob-sha-1' } });
+      }
+      if (route === 'GET /repos/{owner}/{repo}/commits/{ref}/check-runs') {
+        return Promise.resolve({ data: { check_runs: [{ conclusion: 'success' }] } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValue({ request: mockRequest });
+
+    const res = await app.request('/api/v1/admin/acme/review/list', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect(res.status).toBe(200);
+    const body = await res.json<{ reviews: Array<{ type: string; supplier_id: string; validate: string }> }>();
+    expect(body.reviews[0]).toMatchObject({ type: 'submission', supplier_id: 'SUP001', validate: 'success' });
+  });
+
+  it('POST /:org/review/:pr/approve merges the PR', async () => {
+    const mockRequest = vi.fn().mockResolvedValue({ data: {} });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ request: mockRequest });
+
+    const res = await app.request('/api/v1/admin/acme/review/7/approve', { method: 'POST', headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it('POST /:org/review/:pr/reject adds label + comment with reason', async () => {
+    const mockRequest = vi.fn().mockResolvedValue({ data: {} });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ request: mockRequest });
+
+    const res = await app.request('/api/v1/admin/acme/review/7/reject', {
+      method: 'POST',
+      headers: { Cookie: await sessionCookie('acme'), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: '數量單位錯誤' }),
+    }, env as any);
+    expect(res.status).toBe(200);
+    const body = await res.json<{ ok: boolean }>();
+    expect(body.ok).toBe(true);
+  });
 });

@@ -3,14 +3,14 @@ import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables, TenantConfig } from '../types';
 import { verifySession } from '../lib/session';
-import { getTenantByOrg, listSupplierTokensByOrg } from '../db/queries';
+import { getTenantByOrg, listSupplierTokensByOrg, insertAuditLog } from '../db/queries';
 import { getInstallationOctokit } from '../github/app';
 import { readTenantConfig } from '../github/config';
 import { syncConfig } from '../handlers/config-push';
 import { configToYaml } from '../lib/config-yaml';
 import { generateFormUrl } from '../lib/tokens';
 import { aggregateKpis } from '../lib/aggregate';
-import { listOpenPullRequestsByPrefix } from '../github/pr';
+import { listOpenPullRequestsByPrefix, getFileOnBranch, getPullChecks, mergePullRequest, addLabelToPR, commentOnPR } from '../github/pr';
 
 const adminApi = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -156,6 +156,59 @@ adminApi.get('/:org/review/count', async (c) => {
   } catch {
     return c.json({ pending: 0 });
   }
+});
+
+adminApi.get('/:org/review/list', async (c) => {
+  const { org } = c.req.param();
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.json({ reviews: [] });
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  const subs = await listOpenPullRequestsByPrefix(octokit, org, 'sub/');
+  const wds = await listOpenPullRequestsByPrefix(octokit, org, 'withdraw/');
+  const reviews: Record<string, unknown>[] = [];
+  for (const pr of subs) {
+    const [, supplierId, submissionId] = pr.head.ref.split('/'); // sub/{sid}/{uuid}
+    const file = await getFileOnBranch(octokit, org, pr.head.ref, `submissions/${supplierId}/${submissionId}.json`);
+    const validate = await getPullChecks(octokit, org, pr.head.sha);
+    reviews.push({
+      number: pr.number, type: 'submission', branch: pr.head.ref, title: pr.title,
+      supplier_id: supplierId, validate,
+      needsRevision: pr.labels.some((l) => l.name === 'status:revision'),
+      data: file ? file.data : null,
+    });
+  }
+  for (const pr of wds) {
+    const [, supplierId] = pr.head.ref.split('/');
+    reviews.push({ number: pr.number, type: 'withdrawal', branch: pr.head.ref, title: pr.title, supplier_id: supplierId });
+  }
+  return c.json({ reviews });
+});
+
+adminApi.post('/:org/review/:pr/approve', async (c) => {
+  const { org, pr } = c.req.param();
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  try {
+    await mergePullRequest(octokit, org, Number(pr));
+    await insertAuditLog(c.env.DB, { org, action: 'submission_approved', actor: 'manager', target: `pr#${pr}` });
+    return c.json({ ok: true });
+  } catch (e) {
+    return c.json({ error: 'merge failed', detail: String((e as { message?: string }).message ?? e) }, 409);
+  }
+});
+
+adminApi.post('/:org/review/:pr/reject', async (c) => {
+  const { org, pr } = c.req.param();
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  const body = await c.req.json<{ reason?: string }>().catch(() => ({ reason: '' }));
+  const reason = (body.reason ?? '').trim() || '（未填理由）';
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  await addLabelToPR(octokit, org, Number(pr), 'status:revision');
+  await commentOnPR(octokit, org, Number(pr), `<!-- reject -->\n**退件理由**：${reason}`);
+  await insertAuditLog(c.env.DB, { org, action: 'submission_rejected', actor: 'manager', target: `pr#${pr}` });
+  return c.json({ ok: true });
 });
 
 adminApi.get('/:org/dashboard-data', async (c) => {
