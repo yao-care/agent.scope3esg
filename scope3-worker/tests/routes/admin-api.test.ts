@@ -182,4 +182,44 @@ describe('admin API auth', () => {
     const y = await app.request('/api/v1/admin/acme/dashboard-data?year=2025', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
     expect((await y.json<{ submissionCount: number }>()).submissionCount).toBe(1);
   });
+
+  it('GET /:org/reports?format=csv returns CSV attachment', async () => {
+    const submissions = [
+      { submission_id: 'sub-1', supplier_id: 'SUP001', scope3_category: 1, activity_type: 'transport', calculated_co2e: 100, period: '2025-Q1' },
+    ];
+    const base64Content = btoa(JSON.stringify(submissions));
+    const mockRequest = vi.fn().mockImplementation((route: string) => {
+      if (route === 'GET /repos/{owner}/{repo}/contents/{path}') {
+        return Promise.resolve({ data: { content: base64Content + '\n', sha: 'sha-sub' } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValue({ request: mockRequest });
+
+    const res = await app.request('/api/v1/admin/acme/reports?format=csv', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/csv');
+    expect(res.headers.get('content-disposition')).toContain('attachment');
+    expect(await res.text()).toContain('submission_id,supplier_id');
+  });
+
+  it('GET /:org/reports?format=md&year=2025 returns markdown filtered by year', async () => {
+    const submissions = [
+      { submission_id: 'sub-1', supplier_id: 'SUP001', scope3_category: 1, activity_type: 'transport', calculated_co2e: 100, period: '2025-Q1' },
+      { submission_id: 'sub-2', supplier_id: 'SUP002', scope3_category: 2, activity_type: 'energy', calculated_co2e: 200, period: '2024-Q3' },
+    ];
+    const base64Content = btoa(JSON.stringify(submissions));
+    const mockRequest = vi.fn().mockImplementation((route: string) => {
+      if (route === 'GET /repos/{owner}/{repo}/contents/{path}') {
+        return Promise.resolve({ data: { content: base64Content + '\n', sha: 'sha-sub' } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValue({ request: mockRequest });
+
+    const res = await app.request('/api/v1/admin/acme/reports?format=md&year=2025', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/markdown');
+    expect(await res.text()).toContain('盤點年度：2025');
+  });
 });

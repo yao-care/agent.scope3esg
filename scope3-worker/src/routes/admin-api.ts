@@ -11,6 +11,7 @@ import { configToYaml } from '../lib/config-yaml';
 import { generateFormUrl } from '../lib/tokens';
 import { aggregateKpis } from '../lib/aggregate';
 import { listOpenPullRequestsByPrefix, getFileOnBranch, getPullChecks, mergePullRequest, addLabelToPR, commentOnPR } from '../github/pr';
+import { toCsv, toGhgMarkdown } from '../lib/report';
 
 const adminApi = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -221,6 +222,25 @@ adminApi.get('/:org/dashboard-data', async (c) => {
   const availableYears = [...new Set(all.map((s: any) => String(s.period ?? '').slice(0, 4)).filter(Boolean))].sort();
   const submissions = year ? all.filter((s: any) => String(s.period ?? '').slice(0, 4) === year) : all;
   return c.json({ ...aggregateKpis(submissions), availableYears });
+});
+
+adminApi.get('/:org/reports', async (c) => {
+  const { org } = c.req.param();
+  const year = c.req.query('year');
+  const format = c.req.query('format') ?? 'md';
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+  const all = await readAggregatedSubmissions(octokit, org);
+  const submissions = year ? all.filter((s: any) => String(s.period ?? '').slice(0, 4) === year) : all;
+  if (format === 'csv') {
+    return new Response(toCsv(submissions), {
+      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="scope3-report-${year || 'all'}.csv"` },
+    });
+  }
+  return new Response(toGhgMarkdown(submissions, year || 'all'), {
+    headers: { 'Content-Type': 'text/markdown; charset=utf-8' },
+  });
 });
 
 export default adminApi;
