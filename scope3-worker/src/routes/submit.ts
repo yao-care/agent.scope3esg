@@ -30,7 +30,7 @@ function formHtml(
   token: string,
   supplierId: string,
   approved: Record<string, unknown>[],
-  pending: Array<{ number: number; title: string; submissionId: string | undefined; needsRevision: boolean; rejectReason: string | null }>,
+  pending: Array<{ number: number; title: string; submissionId: string | undefined; needsRevision: boolean; rejectReason: string | null; data: Record<string, unknown> | null }>,
   withdrawnIds: (string | undefined)[],
 ): string {
   const withdrawBtn = (sid: unknown) => `<form method="POST" action="/submit/${esc(org)}/${esc(token)}/withdraw" style="display:inline" onsubmit="return confirm('確定撤回此筆？')">
@@ -54,11 +54,11 @@ function formHtml(
   <table class="table">
     <thead><tr><th>期間</th><th>類別</th><th>活動</th><th>數量</th><th>狀態</th><th>操作</th></tr></thead>
     <tbody>
-      ${pending.map((p) => `<tr>
-        <td colspan="4">${esc(p.title)}</td>
+      ${pending.map((p) => { const d = (p.data || {}); return `<tr>
+        <td>${esc(d.period)}</td><td>Cat.${esc(d.scope3_category)}</td><td>${esc(d.activity_type)}</td><td>${esc(d.amount)} ${esc(d.unit)}</td>
         <td>${p.needsRevision ? `<span class="badge">需修改</span>` : `<span class="badge">審核中</span>`}${p.needsRevision && p.rejectReason ? `<div class="muted">退件理由：${esc(p.rejectReason)}</div>` : ''}</td>
         <td>${p.submissionId ? `<a class="btn btn-secondary" href="/submit/${esc(org)}/${esc(token)}/edit/${esc(p.submissionId)}">編輯</a> ${withdrawBtn(p.submissionId)}` : ''}</td>
-      </tr>`).join('')}
+      </tr>`; }).join('')}
       ${approved.map((s) => {
         const isWithdrawing = withdrawnIds.indexOf(s.submission_id as string | undefined) >= 0;
         return `<tr><td>${esc(s.period)}</td><td>Cat.${esc(s.scope3_category)}</td><td>${esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td>${isWithdrawing ? '<span class="badge">撤回審核中</span>' : '<span class="badge">已核定</span>'}</td><td>${isWithdrawing ? '' : withdrawBtn(s.submission_id)}</td></tr>`;
@@ -194,7 +194,7 @@ submit.get('/:org/:token', async (c) => {
   }
 
   let approved: Record<string, unknown>[] = [];
-  let pending: Array<{ number: number; title: string; submissionId: string | undefined; needsRevision: boolean; rejectReason: string | null }> = [];
+  let pending: Array<{ number: number; title: string; submissionId: string | undefined; needsRevision: boolean; rejectReason: string | null; data: Record<string, unknown> | null }> = [];
   let withdrawnIds: (string | undefined)[] = [];
   try {
     const tenant = await getTenantByOrg(c.env.DB, org);
@@ -206,7 +206,8 @@ submit.get('/:org/:token', async (c) => {
         const submissionId = p.head.ref.split('/').pop();
         const needsRevision = p.labels.some((l) => l.name === 'status:revision');
         const rejectReason = needsRevision ? await getLatestRejectReason(octokit, org, p.number) : null;
-        return { number: p.number, title: p.title, submissionId, needsRevision, rejectReason };
+        const file = await getFileOnBranch(octokit, org, p.head.ref, `submissions/${tokenRow.supplierId}/${submissionId}.json`);
+        return { number: p.number, title: p.title, submissionId, needsRevision, rejectReason, data: file ? file.data : null };
       }));
       const wdPrs = await listOpenPullRequestsByPrefix(octokit, org, `withdraw/${tokenRow.supplierId}/`);
       withdrawnIds = wdPrs.map((p) => p.head.ref.split('/').pop());

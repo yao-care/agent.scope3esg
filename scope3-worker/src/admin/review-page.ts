@@ -37,7 +37,11 @@ function rowHtml(r){
     var d=r.data||{};
     head='<strong>提交</strong> ｜ '+esc(r.supplier_id)+' ｜ Cat.'+esc(d.scope3_category)+' '+esc(CAT_NAMES[(d.scope3_category||1)-1]||'')+' ｜ '+esc(d.period)+' ｜ '+light(r.validate)+(r.needsRevision?' <span class="badge">需修改</span>':'');
     body='<div class="muted">活動：'+esc(d.activity_type)+' ｜ 數量：'+esc(d.amount)+' '+esc(d.unit)+'</div>';
-    var ev=(d.evidence_urls||[]); if(ev.length){ body+='<div class="muted">佐證：'+ev.map(function(u,i){return '<a href="'+esc(u)+'" target="_blank">檔'+(i+1)+'</a>';}).join(' ')+'</div>'; }
+    var ev=(d.evidence_urls||[]);
+    body+='<details><summary class="muted" style="cursor:pointer">完整詳情</summary>'+
+      '<div class="muted">提交時間：'+esc(d.submitted_at)+' ｜ 管道：'+esc(d.channel)+' ｜ 提交 ID：'+esc(d.submission_id)+'</div>'+
+      '<div>佐證：'+(ev.length ? ev.map(function(u,i){return '<a class="btn btn-secondary" href="'+esc(u)+'" target="_blank">下載檔'+(i+1)+'</a>';}).join(' ') : '<span class="muted">無佐證檔</span>')+'</div>'+
+      '</details>';
   }
   var actions = r.type==='withdrawal'
     ? '<button class="btn btn-primary" onclick="approve('+r.number+')">確認撤回</button> <button class="btn btn-secondary" onclick="reject('+r.number+')">駁回</button>'
