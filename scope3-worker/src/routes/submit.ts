@@ -1,11 +1,23 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
-import { getSupplierToken } from '../db/queries';
+import { getSupplierToken, getTenantByOrg } from '../db/queries';
 import { processSubmission } from '../handlers/submission';
+import { getInstallationOctokit } from '../github/app';
+import { listSupplierSubmissions, listOpenPullRequestsByPrefix } from '../github/pr';
 
 const submit = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-function formHtml(org: string, token: string, supplierId: string): string {
+function esc(v: unknown): string {
+  return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formHtml(
+  org: string,
+  token: string,
+  supplierId: string,
+  approved: Record<string, unknown>[],
+  pending: Array<{ number: number; title: string }>,
+): string {
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -17,7 +29,19 @@ function formHtml(org: string, token: string, supplierId: string): string {
 <body>
 <div class="container">
 <h1>Scope 3 碳排資料提交</h1>
-<p class="supplier-note">供應商：<strong>${supplierId}</strong></p>
+<p class="supplier-note">供應商：<strong>${esc(supplierId)}</strong></p>
+<section class="card">
+  <h2>我的提交紀錄</h2>
+  <table class="table">
+    <thead><tr><th>期間</th><th>類別</th><th>活動</th><th>數量</th><th>狀態</th></tr></thead>
+    <tbody>
+      ${pending.map((p) => `<tr><td colspan="4">${esc(p.title)}</td><td><span class="badge">審核中</span></td></tr>`).join('')}
+      ${approved.map((s) => `<tr><td>${esc(s.period)}</td><td>Cat.${esc(s.scope3_category)}</td><td>${esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td><span class="badge">已核定</span></td></tr>`).join('')}
+      ${(pending.length === 0 && approved.length === 0) ? '<tr><td colspan="5" class="muted">尚無提交紀錄</td></tr>' : ''}
+    </tbody>
+  </table>
+</section>
+<section class="card">
 <form method="POST" enctype="multipart/form-data">
   <label class="label">盤點類別 (Scope 3 Category)</label>
   <select class="select" name="scope3_category" required>
@@ -77,6 +101,7 @@ function formHtml(org: string, token: string, supplierId: string): string {
   actEl.addEventListener('change', syncUnits);
   syncUnits();
 </script>
+</section>
 </div>
 </body>
 </html>`;
@@ -98,7 +123,20 @@ submit.get('/:org/:token', async (c) => {
   if (!tokenRow || tokenRow.org !== org) {
     return c.text('無效的連結', 401);
   }
-  return c.html(formHtml(org, token, tokenRow.supplierId));
+
+  let approved: Record<string, unknown>[] = [];
+  let pending: Array<{ number: number; title: string }> = [];
+  try {
+    const tenant = await getTenantByOrg(c.env.DB, org);
+    if (tenant) {
+      const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+      approved = await listSupplierSubmissions(octokit, org, tokenRow.supplierId);
+      const prs = await listOpenPullRequestsByPrefix(octokit, org, `sub/${tokenRow.supplierId}/`);
+      pending = prs.map((p) => ({ number: p.number, title: p.title }));
+    }
+  } catch { /* 查不到清單不擋填表 */ }
+
+  return c.html(formHtml(org, token, tokenRow.supplierId, approved, pending));
 });
 
 submit.post('/:org/:token', async (c) => {

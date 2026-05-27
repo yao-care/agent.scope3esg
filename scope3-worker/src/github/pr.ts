@@ -43,3 +43,28 @@ export async function listOpenPullRequestsByPrefix(octokit: Octokit, org: string
   const prs = data as OpenPR[];
   return prs.filter((p) => p.head?.ref?.startsWith(headPrefix));
 }
+
+export async function listSupplierSubmissions(octokit: Octokit, org: string, supplierId: string): Promise<Record<string, unknown>[]> {
+  let listing: Array<{ name: string; path: string; type: string }>;
+  try {
+    const { data } = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', {
+      owner: org, repo: REPO, path: `submissions/${supplierId}`,
+    });
+    if (!Array.isArray(data)) return [];
+    listing = data as Array<{ name: string; path: string; type: string }>;
+  } catch {
+    return []; // 目錄不存在（尚無已核定提交）
+  }
+  const out: Record<string, unknown>[] = [];
+  for (const f of listing) {
+    if (f.type !== 'file' || !f.name.endsWith('.json')) continue;
+    try {
+      const { data } = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { owner: org, repo: REPO, path: f.path });
+      const content = (data as { content?: string }).content;
+      if (!content) continue;
+      const bytes = Uint8Array.from(atob(content.replace(/\n/g, '')), (c) => c.charCodeAt(0));
+      out.push(JSON.parse(new TextDecoder('utf-8').decode(bytes)));
+    } catch { /* skip */ }
+  }
+  return out;
+}

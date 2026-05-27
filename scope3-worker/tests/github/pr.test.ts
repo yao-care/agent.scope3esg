@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix } from '../../src/github/pr';
+import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions } from '../../src/github/pr';
 
 function makeOctokit() {
   return {
-    request: vi.fn(async (route: string) => {
+    request: vi.fn(async (route: string, params?: any) => {
       if (route === 'GET /repos/{owner}/{repo}/git/ref/{ref}') return { data: { object: { sha: 'mainsha123' } } };
       if (route === 'POST /repos/{owner}/{repo}/git/refs') return { data: {} };
       if (route === 'PUT /repos/{owner}/{repo}/contents/{path}') return { data: { commit: { sha: 'c1' } } };
@@ -12,6 +12,13 @@ function makeOctokit() {
         { number: 7, title: '[S1] x', head: { ref: 'sub/SUP001/aaa' } },
         { number: 8, title: '[S2] y', head: { ref: 'sub/SUP002/bbb' } },
       ] };
+      if (route === 'GET /repos/{owner}/{repo}/contents/{path}' && params?.path === 'submissions/SUP001') {
+        return { data: [{ name: 'a.json', path: 'submissions/SUP001/a.json', type: 'file' }] };
+      }
+      if (route === 'GET /repos/{owner}/{repo}/contents/{path}' && params?.path === 'submissions/SUP001/a.json') {
+        const json = JSON.stringify({ submission_id: 'a', supplier_id: 'SUP001', scope3_category: 1, period: '2025-Q1', activity_type: 'electricity', amount: 100, unit: 'kWh' });
+        return { data: { content: Buffer.from(json, 'utf-8').toString('base64') } };
+      }
       return { data: {} };
     }),
   };
@@ -49,5 +56,12 @@ describe('pr helpers', () => {
     const prs = await listOpenPullRequestsByPrefix(octokit as any, 'acme', 'sub/SUP001/');
     expect(prs.length).toBe(1);
     expect(prs[0].number).toBe(7);
+  });
+
+  it('listSupplierSubmissions reads merged submission files for a supplier', async () => {
+    const subs = await listSupplierSubmissions(octokit as any, 'acme', 'SUP001');
+    expect(subs.length).toBe(1);
+    expect(subs[0].submission_id).toBe('a');
+    expect(subs[0].period).toBe('2025-Q1');
   });
 });
