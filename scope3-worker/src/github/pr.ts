@@ -37,11 +37,15 @@ export async function openPullRequest(octokit: Octokit, org: string, branch: str
 export interface OpenPR { number: number; title: string; head: { ref: string }; }
 
 export async function listOpenPullRequestsByPrefix(octokit: Octokit, org: string, headPrefix: string): Promise<OpenPR[]> {
-  const { data } = await octokit.request('GET /repos/{owner}/{repo}/pulls', {
-    owner: org, repo: REPO, state: 'open', per_page: 100,
-  });
-  const prs = data as OpenPR[];
-  return prs.filter((p) => p.head?.ref?.startsWith(headPrefix));
+  try {
+    const res = await octokit.request('GET /repos/{owner}/{repo}/pulls', {
+      owner: org, repo: REPO, state: 'open', per_page: 100,
+    });
+    const prs = (res?.data as OpenPR[] | undefined) ?? [];
+    return prs.filter((p) => p.head?.ref?.startsWith(headPrefix));
+  } catch {
+    return []; // PR 清單讀取失敗（repo 不可讀/網路），視為無待審
+  }
 }
 
 export async function closePullRequest(octokit: Octokit, org: string, prNumber: number): Promise<void> {

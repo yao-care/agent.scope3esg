@@ -28,8 +28,8 @@ describe('audit_log queries', () => {
   beforeAll(async () => { await applyMigrations(env.DB); });
 
   it('inserts and lists audit entries by org', async () => {
-    await insertAuditLog(env.DB, { org: 'acme', action: 'submission_created', actor: 'SUP001', target: 'issue#5' });
+    await insertAuditLog(env.DB, { org: 'acme', action: 'submission_created', actor: 'SUP001', target: 'pr#5' });
     const rows = await listAuditLogByOrg(env.DB, 'acme');
-    expect(rows.some((r) => r.action === 'submission_created' && r.target === 'issue#5')).toBe(true);
+    expect(rows.some((r) => r.action === 'submission_created' && r.target === 'pr#5')).toBe(true);
   });
 });

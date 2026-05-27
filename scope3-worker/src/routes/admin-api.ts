@@ -10,8 +10,24 @@ import { syncConfig } from '../handlers/config-push';
 import { configToYaml } from '../lib/config-yaml';
 import { generateFormUrl } from '../lib/tokens';
 import { aggregateKpis } from '../lib/aggregate';
+import { listOpenPullRequestsByPrefix } from '../github/pr';
 
 const adminApi = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+// 讀取 main 上 data/submissions.json（calculate workflow 產生的已核定提交彙整）。
+// 用 atob + TextDecoder 解 base64/UTF-8（不可直接把 atob 結果當字串，會壞中文）。
+async function readAggregatedSubmissions(octokit: Awaited<ReturnType<typeof getInstallationOctokit>>, org: string): Promise<any[]> {
+  try {
+    const res = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { owner: org, repo: 'scope3-inventory', path: 'data/submissions.json' });
+    const data = res?.data as { content?: string } | undefined;
+    if (!data?.content) return [];
+    const bytes = Uint8Array.from(atob(data.content.replace(/\n/g, '')), (ch) => ch.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function readCookie(cookieHeader: string, name: string): string | null {
   for (const part of cookieHeader.split(';')) {
@@ -80,13 +96,19 @@ adminApi.get('/:org/submissions', async (c) => {
   const tenant = await getTenantByOrg(c.env.DB, org);
   if (!tenant) return c.json({ error: 'unknown org' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
-  const { data: issues } = await octokit.request('GET /repos/{owner}/{repo}/issues', { owner: org, repo: 'scope3-inventory', state: 'all', per_page: 100 });
-  const items = (issues as Array<{ number: number; title: string; labels: Array<{ name: string }> }>).map((i) => ({
-    number: i.number,
-    title: i.title,
-    status: (i.labels.map((l) => l.name).find((n) => n.startsWith('status:')) ?? 'status:submitted').replace('status:', ''),
+
+  // 待審來自 open PR（分支 sub/{supplierId}/{submissionId}）
+  const prs = await listOpenPullRequestsByPrefix(octokit, org, 'sub/');
+  const pending = prs.map((p) => ({ number: p.number, title: p.title, status: 'pending' }));
+
+  // 已核定來自 calculate workflow 彙整的 data/submissions.json
+  const aggregated = await readAggregatedSubmissions(octokit, org);
+  const approved = aggregated.map((s: any) => ({
+    title: `${s.supplier_id} Cat.${s.scope3_category} ${s.period} ${s.activity_type} (${s.calculated_co2e} kgCO2e)`,
+    status: 'approved',
   }));
-  return c.json({ submissions: items });
+
+  return c.json({ submissions: [...pending, ...approved] });
 });
 
 adminApi.get('/:org/overview', async (c) => {
@@ -101,21 +123,17 @@ adminApi.get('/:org/overview', async (c) => {
   const urlBySupplier: Record<string, string> = {};
   for (const t of tokens) urlBySupplier[t.supplierId] = generateFormUrl(c.env.WORKER_BASE_URL, org, t.token);
 
-  // 提交數 by supplierId（解析 issue body 的 scope3-data）
+  // 提交數 by supplierId：已核定（彙整檔）+ 待審（open PR，分支 sub/{supplierId}/...）
   const countBySupplier: Record<string, number> = {};
-  try {
-    const { data: issues } = await octokit.request('GET /repos/{owner}/{repo}/issues', {
-      owner: org, repo: 'scope3-inventory', state: 'all', per_page: 100,
-    });
-    for (const issue of issues as Array<{ body?: string }>) {
-      const m = issue.body && issue.body.match(/<!-- scope3-data:\n([\s\S]*?)\n-->/);
-      if (!m) continue;
-      try {
-        const d = JSON.parse(m[1]);
-        if (d.supplier_id) countBySupplier[d.supplier_id] = (countBySupplier[d.supplier_id] || 0) + 1;
-      } catch { /* skip */ }
-    }
-  } catch { /* repo issues unreadable */ }
+  const aggregated = await readAggregatedSubmissions(octokit, org);
+  for (const s of aggregated as Array<{ supplier_id?: string }>) {
+    if (s.supplier_id) countBySupplier[s.supplier_id] = (countBySupplier[s.supplier_id] || 0) + 1;
+  }
+  const openPrs = await listOpenPullRequestsByPrefix(octokit, org, 'sub/');
+  for (const p of openPrs) {
+    const sid = p.head.ref.split('/')[1]; // sub/{supplierId}/{submissionId}
+    if (sid) countBySupplier[sid] = (countBySupplier[sid] || 0) + 1;
+  }
 
   const suppliers = (config.suppliers || []).map((s) => ({
     ...s,
@@ -131,18 +149,7 @@ adminApi.get('/:org/dashboard-data', async (c) => {
   const tenant = await getTenantByOrg(c.env.DB, org);
   if (!tenant) return c.json({ error: 'unknown org' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
-  let submissions: any[] = [];
-  try {
-    const res = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { owner: org, repo: 'scope3-inventory', path: 'data/submissions.json' });
-    const data = res?.data as { content?: string } | undefined;
-    if (data?.content) {
-      // 讀 base64 內容並用 TextDecoder 解 UTF-8（不可用 atob 直接當字串，會壞中文）。
-      const bytes = Uint8Array.from(atob(data.content.replace(/\n/g, '')), (ch) => ch.charCodeAt(0));
-      const json = new TextDecoder('utf-8').decode(bytes);
-      const parsed = JSON.parse(json);
-      if (Array.isArray(parsed)) submissions = parsed;
-    }
-  } catch { /* 檔案不存在或無法讀，視為空 */ }
+  const submissions = await readAggregatedSubmissions(octokit, org);
   return c.json(aggregateKpis(submissions));
 });
 

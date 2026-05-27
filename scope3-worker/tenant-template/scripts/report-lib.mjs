@@ -4,7 +4,7 @@
 const CSV_COLUMNS = [
   'submission_id', 'supplier_id', 'scope3_category', 'period',
   'activity_type', 'amount', 'unit', 'emission_factor_id',
-  'calculated_co2e', 'issue_number',
+  'calculated_co2e', 'source_file',
 ];
 
 function escapeCsv(value) {
