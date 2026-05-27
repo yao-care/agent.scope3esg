@@ -111,6 +111,26 @@ describe('admin API auth', () => {
     const res = await app.request('/api/v1/admin/acme/review/7/approve', { method: 'POST', headers: { Cookie: await sessionCookie('acme') } }, env as any);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
+    // verify mergePullRequest was called with correct endpoint and PR number
+    expect(mockRequest).toHaveBeenCalledWith(
+      'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge',
+      expect.objectContaining({ pull_number: 7 }),
+    );
+  });
+
+  it('POST /:org/review/:pr/approve returns 409 when merge fails', async () => {
+    const mockRequest = vi.fn().mockImplementation((route: string) => {
+      if (route === 'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge') {
+        return Promise.reject(new Error('Pull Request is not mergeable'));
+      }
+      return Promise.resolve({ data: {} });
+    });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ request: mockRequest });
+
+    const res = await app.request('/api/v1/admin/acme/review/7/approve', { method: 'POST', headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect(res.status).toBe(409);
+    const body = await res.json<{ error: string }>();
+    expect(body.error).toBe('merge failed');
   });
 
   it('POST /:org/review/:pr/reject adds label + comment with reason', async () => {
@@ -125,5 +145,18 @@ describe('admin API auth', () => {
     expect(res.status).toBe(200);
     const body = await res.json<{ ok: boolean }>();
     expect(body.ok).toBe(true);
+    // verify addLabelToPR was called with status:revision label
+    expect(mockRequest).toHaveBeenCalledWith(
+      'POST /repos/{owner}/{repo}/issues/{issue_number}/labels',
+      expect.objectContaining({ issue_number: 7, labels: ['status:revision'] }),
+    );
+    // verify commentOnPR was called with reject marker and reason in body
+    const commentCall = mockRequest.mock.calls.find(
+      ([route]: [string]) => route === 'POST /repos/{owner}/{repo}/issues/{issue_number}/comments',
+    );
+    expect(commentCall).toBeDefined();
+    const commentBody: string = commentCall![1].body;
+    expect(commentBody).toEqual(expect.stringContaining('<!-- reject -->'));
+    expect(commentBody).toEqual(expect.stringContaining('數量單位錯誤'));
   });
 });
