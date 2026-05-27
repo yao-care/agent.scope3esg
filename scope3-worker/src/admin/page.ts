@@ -1,6 +1,8 @@
 // src/admin/page.ts
 // ESG Manager 管理介面單頁。所有 ${...} 都是「伺服器端」插值（僅注入 org）；
 // 前端 JS 一律用字串拼接、事件委派，避免與外層 template literal 的 ${} 衝突，也避免 inline onclick 引號 escape。
+import { renderNav } from '../ui/nav';
+
 export function adminPageHtml(org: string): string {
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -11,6 +13,7 @@ export function adminPageHtml(org: string): string {
 <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+${renderNav(org, 'config')}
 <div class="container">
 <h1>Scope 3 盤點管理 — ${org}</h1>
 

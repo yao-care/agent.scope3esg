@@ -1,5 +1,6 @@
 // src/routes/dashboard.ts
 import { Hono } from 'hono';
+import { renderNav } from '../ui/nav';
 import type { Bindings, Variables } from '../types';
 import { verifySession } from '../lib/session';
 
@@ -33,6 +34,7 @@ function dashboardHtml(org: string): string {
 <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+${renderNav(org, 'dashboard')}
 <div class="container">
 <h1>Scope 3 碳排儀表板 — ${org}</h1>
 <p class="muted" id="subtitle">載入中…</p>
