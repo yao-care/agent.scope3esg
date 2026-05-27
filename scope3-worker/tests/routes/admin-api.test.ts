@@ -159,4 +159,27 @@ describe('admin API auth', () => {
     expect(commentBody).toEqual(expect.stringContaining('<!-- reject -->'));
     expect(commentBody).toEqual(expect.stringContaining('數量單位錯誤'));
   });
+
+  it('GET /:org/dashboard-data returns availableYears and filters by year', async () => {
+    const submissions = [
+      { supplier_id: 'SUP001', scope3_category: 1, activity_type: 'transport', calculated_co2e: 100, period: '2025-Q1' },
+      { supplier_id: 'SUP002', scope3_category: 2, activity_type: 'energy', calculated_co2e: 200, period: '2024-Q3' },
+    ];
+    const base64Content = btoa(JSON.stringify(submissions));
+    const mockRequest = vi.fn().mockImplementation((route: string) => {
+      if (route === 'GET /repos/{owner}/{repo}/contents/{path}') {
+        return Promise.resolve({ data: { content: base64Content + '\n', sha: 'sha-sub' } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValue({ request: mockRequest });
+
+    const all = await app.request('/api/v1/admin/acme/dashboard-data', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    const allBody = await all.json<{ availableYears: string[]; submissionCount: number }>();
+    expect(allBody.availableYears.slice().sort()).toEqual(['2024', '2025']);
+    expect(allBody.submissionCount).toBe(2);
+
+    const y = await app.request('/api/v1/admin/acme/dashboard-data?year=2025', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect((await y.json<{ submissionCount: number }>()).submissionCount).toBe(1);
+  });
 });

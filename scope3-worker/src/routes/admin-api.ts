@@ -213,11 +213,14 @@ adminApi.post('/:org/review/:pr/reject', async (c) => {
 
 adminApi.get('/:org/dashboard-data', async (c) => {
   const { org } = c.req.param();
+  const year = c.req.query('year');
   const tenant = await getTenantByOrg(c.env.DB, org);
   if (!tenant) return c.json({ error: 'unknown org' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
-  const submissions = await readAggregatedSubmissions(octokit, org);
-  return c.json(aggregateKpis(submissions));
+  const all = await readAggregatedSubmissions(octokit, org);
+  const availableYears = [...new Set(all.map((s: any) => String(s.period ?? '').slice(0, 4)).filter(Boolean))].sort();
+  const submissions = year ? all.filter((s: any) => String(s.period ?? '').slice(0, 4) === year) : all;
+  return c.json({ ...aggregateKpis(submissions), availableYears });
 });
 
 export default adminApi;
