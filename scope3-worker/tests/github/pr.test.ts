@@ -27,6 +27,8 @@ function makeOctokit() {
         return { data: { content: Buffer.from(json, 'utf-8').toString('base64'), sha: 'blobsha1' } };
       }
       if (route === 'GET /repos/{owner}/{repo}/commits/{ref}/check-runs') {
+        if (params?.ref === 'failsha') return { data: { check_runs: [{ conclusion: 'success' }, { conclusion: 'failure' }] } };
+        if (params?.ref === 'pendsha') return { data: { check_runs: [] } };
         return { data: { check_runs: [{ conclusion: 'success' }] } };
       }
       return { data: {} };
@@ -100,5 +102,18 @@ describe('pr helpers', () => {
 
   it('getPullChecks maps check-run conclusions to a status', async () => {
     expect(await getPullChecks(octokit as any, 'acme', 'anysha')).toBe('success');
+  });
+
+  it('getPullChecks returns failure when any check-run failed', async () => {
+    expect(await getPullChecks(octokit as any, 'acme', 'failsha')).toBe('failure');
+  });
+
+  it('getPullChecks returns pending when there are no check-runs', async () => {
+    expect(await getPullChecks(octokit as any, 'acme', 'pendsha')).toBe('pending');
+  });
+
+  it('getFileOnBranch returns null when the file is not found on the branch', async () => {
+    const r = await getFileOnBranch(octokit as any, 'acme', 'sub/NOPE/zzz', 'submissions/NOPE/zzz.json');
+    expect(r).toBeNull();
   });
 });
