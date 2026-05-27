@@ -4,6 +4,7 @@ import { applyMigrations } from '../helpers/migrate';
 import { insertTenant, insertSupplierToken } from '../../src/db/queries';
 import { signSession } from '../../src/lib/session';
 import { app } from '../../src/index';
+import { getInstallationOctokit } from '../../src/github/app';
 
 vi.mock('../../src/github/app', () => ({
   getInstallationOctokit: vi.fn().mockResolvedValue({ request: vi.fn() }),
@@ -53,5 +54,20 @@ describe('admin API auth', () => {
     expect(res.status).toBe(200);
     const body = await res.json<{ suppliers: Array<{ id: string }> }>();
     expect(Array.isArray(body.suppliers)).toBe(true);
+  });
+
+  it('returns pending review count (sub/ × 2 + withdraw/ × 1 = 3)', async () => {
+    const mockPRs = [
+      { number: 1, title: 'SUP001 sub', head: { ref: 'sub/SUP001/abc' } },
+      { number: 2, title: 'SUP002 sub', head: { ref: 'sub/SUP002/def' } },
+      { number: 3, title: 'SUP001 withdraw', head: { ref: 'withdraw/SUP001/ghi' } },
+    ];
+    const mockRequest = vi.fn().mockResolvedValue({ data: mockPRs });
+    (getInstallationOctokit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ request: mockRequest });
+
+    const res = await app.request('/api/v1/admin/acme/review/count', { headers: { Cookie: await sessionCookie('acme') } }, env as any);
+    expect(res.status).toBe(200);
+    const body = await res.json<{ pending: number }>();
+    expect(body.pending).toBe(3);
   });
 });

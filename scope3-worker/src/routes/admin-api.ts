@@ -144,6 +144,20 @@ adminApi.get('/:org/overview', async (c) => {
   return c.json({ inventory_year: config.inventory_year, enabled_categories: config.enabled_categories, suppliers });
 });
 
+adminApi.get('/:org/review/count', async (c) => {
+  const { org } = c.req.param();
+  const tenant = await getTenantByOrg(c.env.DB, org);
+  if (!tenant) return c.json({ pending: 0 });
+  try {
+    const octokit = await getInstallationOctokit(c.env, tenant.installationId);
+    const sub = await listOpenPullRequestsByPrefix(octokit, org, 'sub/');
+    const wd = await listOpenPullRequestsByPrefix(octokit, org, 'withdraw/');
+    return c.json({ pending: sub.length + wd.length });
+  } catch {
+    return c.json({ pending: 0 });
+  }
+});
+
 adminApi.get('/:org/dashboard-data', async (c) => {
   const { org } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
