@@ -34,7 +34,7 @@ export async function openPullRequest(octokit: Octokit, org: string, branch: str
   return (data as { number: number }).number;
 }
 
-export interface OpenPR { number: number; title: string; head: { ref: string }; }
+export interface OpenPR { number: number; title: string; head: { ref: string; sha: string }; labels: { name: string }[]; }
 
 export async function listOpenPullRequestsByPrefix(octokit: Octokit, org: string, headPrefix: string): Promise<OpenPR[]> {
   try {

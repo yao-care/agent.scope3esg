@@ -12,8 +12,8 @@ function makeOctokit() {
       if (route === 'DELETE /repos/{owner}/{repo}/git/refs/{ref}') return { data: {} };
       if (route === 'DELETE /repos/{owner}/{repo}/contents/{path}') return { data: {} };
       if (route === 'GET /repos/{owner}/{repo}/pulls') return { data: [
-        { number: 7, title: '[S1] x', head: { ref: 'sub/SUP001/aaa' } },
-        { number: 8, title: '[S2] y', head: { ref: 'sub/SUP002/bbb' } },
+        { number: 7, title: '[S1] x', head: { ref: 'sub/SUP001/aaa', sha: 'abc123' }, labels: [{ name: 'status:revision' }] },
+        { number: 8, title: '[S2] y', head: { ref: 'sub/SUP002/bbb', sha: 'def456' }, labels: [] },
       ] };
       if (route === 'GET /repos/{owner}/{repo}/contents/{path}' && params?.path === 'submissions/SUP001') {
         return { data: [{ name: 'a.json', path: 'submissions/SUP001/a.json', type: 'file' }] };
@@ -68,6 +68,13 @@ describe('pr helpers', () => {
   it('deleteBranch deletes the ref', async () => {
     await deleteBranch(octokit as any, 'acme', 'sub/SUP001/aaa');
     expect(octokit.request).toHaveBeenCalledWith('DELETE /repos/{owner}/{repo}/git/refs/{ref}', expect.objectContaining({ owner: 'acme', repo: 'scope3-inventory', ref: 'heads/sub/SUP001/aaa' }));
+  });
+
+  it('listOpenPullRequestsByPrefix carries head.sha and labels', async () => {
+    const prs = await listOpenPullRequestsByPrefix(octokit as any, 'acme', 'sub/');
+    expect(prs.length).toBeGreaterThan(0);
+    expect(typeof prs[0].head.sha).toBe('string');
+    expect(Array.isArray(prs[0].labels)).toBe(true);
   });
 
   it('listSupplierSubmissions reads merged submission files for a supplier', async () => {
