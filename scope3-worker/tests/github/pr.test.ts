@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions, closePullRequest, deleteBranch, getFileOnBranch, getPullChecks } from '../../src/github/pr';
+import { getMainSha, createBranch, commitFileToBranch, openPullRequest, listOpenPullRequestsByPrefix, listSupplierSubmissions, closePullRequest, deleteBranch, getFileOnBranch, getPullChecks, mergePullRequest, addLabelToPR, commentOnPR } from '../../src/github/pr';
 
 function makeOctokit() {
   return {
@@ -26,6 +26,9 @@ function makeOctokit() {
         const json = JSON.stringify({ submission_id: 'aaa', supplier_id: 'SUP001', scope3_category: 1, period: '2025-Q1', activity_type: 'electricity', amount: 100, unit: 'kWh' });
         return { data: { content: Buffer.from(json, 'utf-8').toString('base64'), sha: 'blobsha1' } };
       }
+      if (route === 'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge') return { data: { merged: true } };
+      if (route === 'POST /repos/{owner}/{repo}/issues/{issue_number}/labels') return { data: [{ name: 'status:revision' }] };
+      if (route === 'POST /repos/{owner}/{repo}/issues/{issue_number}/comments') return { data: { id: 1 } };
       if (route === 'GET /repos/{owner}/{repo}/commits/{ref}/check-runs') {
         if (params?.ref === 'failsha') return { data: { check_runs: [{ conclusion: 'success' }, { conclusion: 'failure' }] } };
         if (params?.ref === 'pendsha') return { data: { check_runs: [] } };
@@ -115,5 +118,20 @@ describe('pr helpers', () => {
   it('getFileOnBranch returns null when the file is not found on the branch', async () => {
     const r = await getFileOnBranch(octokit as any, 'acme', 'sub/NOPE/zzz', 'submissions/NOPE/zzz.json');
     expect(r).toBeNull();
+  });
+
+  it('mergePullRequest calls the merge endpoint', async () => {
+    await mergePullRequest(octokit as any, 'acme', 7);
+    expect(octokit.request).toHaveBeenCalledWith('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge', expect.objectContaining({ owner: 'acme', repo: 'scope3-inventory', pull_number: 7 }));
+  });
+
+  it('addLabelToPR posts the label', async () => {
+    await addLabelToPR(octokit as any, 'acme', 7, 'status:revision');
+    expect(octokit.request).toHaveBeenCalledWith('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', expect.objectContaining({ issue_number: 7, labels: ['status:revision'] }));
+  });
+
+  it('commentOnPR posts a comment body', async () => {
+    await commentOnPR(octokit as any, 'acme', 7, 'hello');
+    expect(octokit.request).toHaveBeenCalledWith('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', expect.objectContaining({ issue_number: 7, body: 'hello' }));
   });
 });

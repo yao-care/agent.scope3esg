@@ -111,6 +111,25 @@ export async function getPullChecks(octokit: Octokit, org: string, sha: string):
   }
 }
 
+// 核定＝merge PR（Worker 用 App token 代為 merge，觸發租戶 repo 的 calculate）。
+export async function mergePullRequest(octokit: Octokit, org: string, prNumber: number): Promise<void> {
+  await octokit.request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge', {
+    owner: org, repo: REPO, pull_number: prNumber,
+  });
+}
+
+export async function addLabelToPR(octokit: Octokit, org: string, prNumber: number, label: string): Promise<void> {
+  await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', {
+    owner: org, repo: REPO, issue_number: prNumber, labels: [label],
+  });
+}
+
+export async function commentOnPR(octokit: Octokit, org: string, prNumber: number, body: string): Promise<void> {
+  await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
+    owner: org, repo: REPO, issue_number: prNumber, body,
+  });
+}
+
 export async function listSupplierSubmissions(octokit: Octokit, org: string, supplierId: string): Promise<Record<string, unknown>[]> {
   let listing: Array<{ name: string; path: string; type: string }>;
   try {
