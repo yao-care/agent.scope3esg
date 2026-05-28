@@ -71,6 +71,6 @@ describe('processSubmission', () => {
       channel: 'api',
     });
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/invalid token/i);
+    expect(result.error).toMatch(/無效的填表連結/);
   });
 });

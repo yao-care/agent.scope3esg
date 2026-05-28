@@ -1,6 +1,8 @@
 // tenant-template/docs/dashboard.js
 import { aggregateKpis } from './aggregate.mjs';
 
+const ACTIVITY_ZH = {electricity:'電力',natural_gas:'天然氣',diesel:'柴油',water:'用水',waste:'廢棄物',product:'產品',transport:'運輸'};
+
 const CATEGORY_NAMES = {
   1: '採購商品與服務', 2: '資本財', 3: '燃料與能源', 4: '上游運輸配送',
   5: '營運廢棄物', 6: '商務旅行', 7: '員工通勤', 8: '上游租賃資產',
@@ -30,7 +32,7 @@ function renderBars(containerId, rows) {
 
 function renderKpis(k) {
   const cards = [
-    { label: 'Total Scope 3', value: fmt(k.totalCo2e / 1000), unit: 'tCO₂e' },
+    { label: 'Scope 3 總排放', value: fmt(k.totalCo2e / 1000), unit: 'tCO₂e' },
     { label: '供應商數', value: k.supplierCount, unit: '家' },
     { label: '已核定筆數', value: k.submissionCount, unit: '筆' },
     { label: '涵蓋類別數', value: Object.keys(k.byCategory).length, unit: '類' },
@@ -67,7 +69,7 @@ async function main() {
   renderBars(
     'by-activity',
     Object.entries(k.byActivity)
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, value]) => ({ name: (ACTIVITY_ZH[name] || name), value }))
       .sort((a, b) => b.value - a.value),
   );
 }

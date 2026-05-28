@@ -29,11 +29,11 @@ export async function processSubmission(
 ): Promise<SubmissionResult> {
   const tokenRow = await getSupplierToken(env.DB, input.supplierToken);
   if (!tokenRow || tokenRow.org !== input.org) {
-    return { success: false, error: 'Invalid token' };
+    return { success: false, error: '無效的填表連結' };
   }
 
   if (new Date(tokenRow.expiresAt) < new Date()) {
-    return { success: false, error: 'Token expired' };
+    return { success: false, error: '填表連結已過期' };
   }
 
   const tenantRow = await env.DB
@@ -42,7 +42,7 @@ export async function processSubmission(
     .first<{ installation_id: number; org: string }>();
 
   if (!tenantRow) {
-    return { success: false, error: 'Tenant not found' };
+    return { success: false, error: '租戶不存在' };
   }
 
   const octokit = await getInstallationOctokit(env, tenantRow.installation_id);

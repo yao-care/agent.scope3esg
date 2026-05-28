@@ -21,6 +21,8 @@ import {
 
 const submit = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+const CAT_NAMES_SVR = ['採購商品與服務','資本財','燃料與能源','上游運輸配送','營運廢棄物','商務旅行','員工通勤','上游租賃資產','下游運輸配送','售出產品加工','售出產品使用','售出產品報廢','下游租賃資產','加盟','投資'];
+
 function esc(v: unknown): string {
   return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -72,7 +74,7 @@ function formHtml(
 <form method="POST" enctype="multipart/form-data">
   <label class="label">盤點類別 (Scope 3 Category)</label>
   <select class="select" name="scope3_category" required>
-    ${Array.from({length:15},(_,i)=>`<option value="${i+1}">Category ${i+1}</option>`).join('')}
+    ${Array.from({length:15},(_,i)=>`<option value="${i+1}">${i+1}. ${CAT_NAMES_SVR[i]}</option>`).join('')}
   </select>
 
   <label class="label">期間（例：2025-Q1）</label>
@@ -147,7 +149,7 @@ function editFormHtml(org: string, token: string, supplierId: string, submission
 <form method="POST" action="/submit/${esc(org)}/${esc(token)}/edit/${esc(submissionId)}" enctype="multipart/form-data">
   <label class="label">盤點類別 (Scope 3 Category)</label>
   <select class="select" name="scope3_category" required>
-    ${Array.from({length:15},(_,i)=>`<option value="${i+1}" ${Number(d.scope3_category)===i+1?'selected':''}>Category ${i+1}</option>`).join('')}
+    ${Array.from({length:15},(_,i)=>`<option value="${i+1}" ${Number(d.scope3_category)===i+1?'selected':''}>${i+1}. ${CAT_NAMES_SVR[i]}</option>`).join('')}
   </select>
   <label class="label">期間（例：2025-Q1）</label>
   <input class="input" name="period" value="${esc(d.period)}" required pattern="\\d{4}-Q[1-4]">

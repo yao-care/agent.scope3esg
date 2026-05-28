@@ -10,7 +10,7 @@ configSync.post('/:org', async (c) => {
   const { org } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
   if (!tenant) {
-    return c.json({ error: 'unknown org or app not installed' }, 404);
+    return c.json({ error: '找不到組織或應用程式尚未安裝' }, 404);
   }
   await syncConfig(c.env, org, tenant.installationId);
   return c.json({ ok: true });

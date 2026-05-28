@@ -20,6 +20,7 @@ ${renderNav(org, 'review')}
 <script>
 var ORG = ${JSON.stringify(org)};
 var CAT_NAMES = ['採購商品與服務','資本財','燃料與能源','上游運輸配送','營運廢棄物','商務旅行','員工通勤','上游租賃資產','下游運輸配送','售出產品加工','售出產品使用','售出產品報廢','下游租賃資產','加盟','投資'];
+var ACTIVITY_ZH = {electricity:'電力',natural_gas:'天然氣',diesel:'柴油',water:'用水',waste:'廢棄物',product:'產品',transport:'運輸'};
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function light(v){ var m={success:['✅','已驗證'],failure:['❌','驗證未過'],pending:['⏳','驗證中']}; var x=m[v]||m.pending; return '<span class="badge">'+x[0]+' '+x[1]+'</span>'; }
 function postAction(pr, path, body, failMsg){
@@ -44,7 +45,7 @@ function rowHtml(r){
   } else {
     var d=r.data||{};
     head='<strong>提交</strong> ｜ '+esc(r.supplier_id)+' ｜ Cat.'+esc(d.scope3_category)+' '+esc(CAT_NAMES[(d.scope3_category||1)-1]||'')+' ｜ '+esc(d.period)+' ｜ '+light(r.validate)+(r.needsRevision?' <span class="badge">需修改</span>':'');
-    body='<div class="muted">活動：'+esc(d.activity_type)+' ｜ 數量：'+esc(d.amount)+' '+esc(d.unit)+'</div>';
+    body='<div class="muted">活動：'+(ACTIVITY_ZH[d.activity_type]||esc(d.activity_type))+' ｜ 數量：'+esc(d.amount)+' '+esc(d.unit)+'</div>';
     var ev=(d.evidence_urls||[]);
     body+='<details><summary class="muted" style="cursor:pointer">完整詳情</summary>'+
       '<div class="muted">提交時間：'+esc(d.submitted_at)+' ｜ 管道：'+esc(d.channel)+' ｜ 提交 ID：'+esc(d.submission_id)+'</div>'+

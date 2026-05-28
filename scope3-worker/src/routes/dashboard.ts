@@ -47,6 +47,7 @@ ${renderNav(org, 'dashboard')}
 <script>
 var ORG = ${JSON.stringify(org)};
 var CAT_NAMES = ['採購商品與服務','資本財','燃料與能源','上游運輸配送','營運廢棄物','商務旅行','員工通勤','上游租賃資產','下游運輸配送','售出產品加工','售出產品使用','售出產品報廢','下游租賃資產','加盟','投資'];
+var ACTIVITY_ZH = {electricity:'電力',natural_gas:'天然氣',diesel:'柴油',water:'用水',waste:'廢棄物',product:'產品',transport:'運輸'};
 function fmt(n){ return Number(n).toLocaleString('en-US',{maximumFractionDigits:1}); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function bars(id, rows){
@@ -73,7 +74,7 @@ function loadDash(){
     }).join('');
     bars('by-category', Object.keys(k.byCategory).map(function(cat){return {name:'Cat.'+cat+' '+(CAT_NAMES[cat-1]||''), value:k.byCategory[cat]};}).sort(function(a,b){return b.value-a.value;}));
     bars('top-suppliers', k.topSuppliers.map(function(s){return {name:s.supplier_id, value:s.co2e};}));
-    bars('by-activity', Object.keys(k.byActivity).map(function(a){return {name:a, value:k.byActivity[a]};}).sort(function(a,b){return b.value-a.value;}));
+    bars('by-activity', Object.keys(k.byActivity).map(function(a){return {name:(ACTIVITY_ZH[a]||a), value:k.byActivity[a]};}).sort(function(a,b){return b.value-a.value;}));
   }).catch(function(){ document.getElementById('subtitle').textContent='無法載入資料'; });
 }
 fetch('/api/v1/admin/'+ORG+'/dashboard-data').then(function(r){return r.json();}).then(function(k){

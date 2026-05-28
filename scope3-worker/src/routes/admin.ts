@@ -31,10 +31,10 @@ function readCookie(c: { req: { header: (n: string) => string | undefined } }, n
 async function handleOAuthCallback(c: Context<{ Bindings: Bindings; Variables: Variables }>) {
   const code = c.req.query('code');
   const state = c.req.query('state');
-  if (!code || !state) return c.text('Missing code/state', 400);
+  if (!code || !state) return c.text('缺少授權參數，請重新登入', 400);
 
   const statePayload = await verifyState(state, c.env.SESSION_SECRET);
-  if (!statePayload) return c.text('Invalid state', 400);
+  if (!statePayload) return c.text('登入驗證失敗，請重新登入', 400);
   const org = statePayload.org;
 
   const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
@@ -44,23 +44,23 @@ async function handleOAuthCallback(c: Context<{ Bindings: Bindings; Variables: V
   });
   const tokenJson = await tokenRes.json<{ access_token?: string }>();
   const userToken = tokenJson.access_token;
-  if (!userToken) return c.text('OAuth exchange failed', 401);
+  if (!userToken) return c.text('GitHub 授權失敗，請重新登入', 401);
 
   const userRes = await fetch('https://api.github.com/user', {
     headers: { Authorization: `Bearer ${userToken}`, 'User-Agent': 'scope3-app', Accept: 'application/vnd.github+json' },
   });
   const user = await userRes.json<{ login?: string }>();
-  if (!user.login) return c.text('Cannot read user', 401);
+  if (!user.login) return c.text('無法讀取使用者資訊', 401);
 
   // 用 installation token（App 有 members:read）確認使用者為該 org 成員。
   // GET /orgs/{org}/members/{username}：204=成員、404=非成員（octokit 對 404 會 throw）。
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.text('Organization not onboarded', 404);
+  if (!tenant) return c.text('此組織尚未啟用 Scope3 服務', 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
   try {
     await octokit.request('GET /orgs/{org}/members/{username}', { org, username: user.login });
   } catch {
-    return c.text('Not a member of this organization', 403);
+    return c.text('您不是此組織的成員，無法登入', 403);
   }
 
   const token = await signSession({ org, user: user.login, exp: Date.now() + SESSION_TTL_MS }, c.env.SESSION_SECRET);
