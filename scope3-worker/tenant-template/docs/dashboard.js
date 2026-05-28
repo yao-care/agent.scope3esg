@@ -59,7 +59,7 @@ async function main() {
   renderBars(
     'by-category',
     Object.entries(k.byCategory)
-      .map(([cat, value]) => ({ name: `Cat.${cat} ${CATEGORY_NAMES[cat] || ''}`, value }))
+      .map(([cat, value]) => ({ name: `第${cat}類 ${CATEGORY_NAMES[cat] || ''}`, value }))
       .sort((a, b) => b.value - a.value),
   );
   renderBars(

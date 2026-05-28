@@ -44,7 +44,7 @@ function rowHtml(r){
     head='<strong>撤回</strong> ｜ '+esc(r.supplier_id)+' ｜ '+esc(r.title);
   } else {
     var d=r.data||{};
-    head='<strong>提交</strong> ｜ '+esc(r.supplier_id)+' ｜ Cat.'+esc(d.scope3_category)+' '+esc(CAT_NAMES[(d.scope3_category||1)-1]||'')+' ｜ '+esc(d.period)+' ｜ '+light(r.validate)+(r.needsRevision?' <span class="badge">需修改</span>':'');
+    head='<strong>提交</strong> ｜ '+esc(r.supplier_id)+' ｜ 第'+esc(d.scope3_category)+'類 '+esc(CAT_NAMES[(d.scope3_category||1)-1]||'')+' ｜ '+esc(d.period)+' ｜ '+light(r.validate)+(r.needsRevision?' <span class="badge">需修改</span>':'');
     body='<div class="muted">活動：'+(ACTIVITY_ZH[d.activity_type]||esc(d.activity_type))+' ｜ 數量：'+esc(d.amount)+' '+esc(d.unit)+'</div>';
     var ev=(d.evidence_urls||[]);
     body+='<details><summary class="muted" style="cursor:pointer">完整詳情</summary>'+

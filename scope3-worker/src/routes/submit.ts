@@ -23,6 +23,8 @@ const submit = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 const CAT_NAMES_SVR = ['採購商品與服務','資本財','燃料與能源','上游運輸配送','營運廢棄物','商務旅行','員工通勤','上游租賃資產','下游運輸配送','售出產品加工','售出產品使用','售出產品報廢','下游租賃資產','加盟','投資'];
 
+const ACTIVITY_ZH_SVR: Record<string, string> = { electricity:'電力', natural_gas:'天然氣', diesel:'柴油', water:'用水', waste:'廢棄物', product:'產品', transport:'運輸' };
+
 function esc(v: unknown): string {
   return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -57,13 +59,13 @@ function formHtml(
     <thead><tr><th>期間</th><th>類別</th><th>活動</th><th>數量</th><th>狀態</th><th>操作</th></tr></thead>
     <tbody>
       ${pending.map((p) => { const d = (p.data || {}); return `<tr>
-        <td>${esc(d.period)}</td><td>Cat.${esc(d.scope3_category)}</td><td>${esc(d.activity_type)}</td><td>${esc(d.amount)} ${esc(d.unit)}</td>
+        <td>${esc(d.period)}</td><td>第${esc(d.scope3_category)}類</td><td>${ACTIVITY_ZH_SVR[String(d.activity_type)] || esc(d.activity_type)}</td><td>${esc(d.amount)} ${esc(d.unit)}</td>
         <td>${p.needsRevision ? `<span class="badge">需修改</span>` : `<span class="badge">審核中</span>`}${p.needsRevision && p.rejectReason ? `<div class="muted">退件理由：${esc(p.rejectReason)}</div>` : ''}</td>
         <td>${p.submissionId ? `<a class="btn btn-secondary" href="/submit/${esc(org)}/${esc(token)}/edit/${esc(p.submissionId)}">編輯</a> ${withdrawBtn(p.submissionId)}` : ''}</td>
       </tr>`; }).join('')}
       ${approved.map((s) => {
         const isWithdrawing = withdrawnIds.indexOf(s.submission_id as string | undefined) >= 0;
-        return `<tr><td>${esc(s.period)}</td><td>Cat.${esc(s.scope3_category)}</td><td>${esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td>${isWithdrawing ? '<span class="badge">撤回審核中</span>' : '<span class="badge">已核定</span>'}</td><td>${isWithdrawing ? '' : withdrawBtn(s.submission_id)}</td></tr>`;
+        return `<tr><td>${esc(s.period)}</td><td>第${esc(s.scope3_category)}類</td><td>${ACTIVITY_ZH_SVR[String(s.activity_type)] || esc(s.activity_type)}</td><td>${esc(s.amount)} ${esc(s.unit)}</td><td>${isWithdrawing ? '<span class="badge">撤回審核中</span>' : '<span class="badge">已核定</span>'}</td><td>${isWithdrawing ? '' : withdrawBtn(s.submission_id)}</td></tr>`;
       }).join('')}
       ${(pending.length === 0 && approved.length === 0) ? '<tr><td colspan="6" class="muted">尚無提交紀錄</td></tr>' : ''}
     </tbody>

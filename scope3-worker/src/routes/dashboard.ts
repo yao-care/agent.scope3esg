@@ -72,7 +72,7 @@ function loadDash(){
     document.getElementById('kpis').innerHTML=cards.map(function(c){
       return '<div class="card"><div class="muted">'+c.label+'</div><div class="kpi-value">'+c.value+' <span class="kpi-unit">'+c.unit+'</span></div></div>';
     }).join('');
-    bars('by-category', Object.keys(k.byCategory).map(function(cat){return {name:'Cat.'+cat+' '+(CAT_NAMES[cat-1]||''), value:k.byCategory[cat]};}).sort(function(a,b){return b.value-a.value;}));
+    bars('by-category', Object.keys(k.byCategory).map(function(cat){return {name:'第'+cat+'類 '+(CAT_NAMES[cat-1]||''), value:k.byCategory[cat]};}).sort(function(a,b){return b.value-a.value;}));
     bars('top-suppliers', k.topSuppliers.map(function(s){return {name:s.supplier_id, value:s.co2e};}));
     bars('by-activity', Object.keys(k.byActivity).map(function(a){return {name:(ACTIVITY_ZH[a]||a), value:k.byActivity[a]};}).sort(function(a,b){return b.value-a.value;}));
   }).catch(function(){ document.getElementById('subtitle').textContent='無法載入資料'; });
