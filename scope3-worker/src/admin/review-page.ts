@@ -22,13 +22,21 @@ var ORG = ${JSON.stringify(org)};
 var CAT_NAMES = ['採購商品與服務','資本財','燃料與能源','上游運輸配送','營運廢棄物','商務旅行','員工通勤','上游租賃資產','下游運輸配送','售出產品加工','售出產品使用','售出產品報廢','下游租賃資產','加盟','投資'];
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function light(v){ var m={success:['✅','已驗證'],failure:['❌','驗證未過'],pending:['⏳','驗證中']}; var x=m[v]||m.pending; return '<span class="badge">'+x[0]+' '+x[1]+'</span>'; }
-function approve(pr){ if(!confirm('確定核定並 merge 此 PR？')) return;
-  fetch('/api/v1/admin/'+ORG+'/review/'+pr+'/approve',{method:'POST'}).then(function(r){return r.json();}).then(function(d){
-    if(d.ok){ load(); } else { alert('核定失敗：'+(d.detail||d.error||'')); }
-  }); }
-function reject(pr){ var reason=prompt('退件理由（會顯示給供應商）：'); if(reason===null) return;
-  fetch('/api/v1/admin/'+ORG+'/review/'+pr+'/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:reason})})
-    .then(function(r){return r.json();}).then(function(){ load(); }); }
+function postAction(pr, path, body, failMsg){
+  var opt = { method:'POST', credentials:'same-origin' };
+  if(body){ opt.headers={'Content-Type':'application/json'}; opt.body=JSON.stringify(body); }
+  return fetch('/api/v1/admin/'+ORG+'/review/'+pr+path, opt)
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ return {s:r.status, d:d}; }); })
+    .then(function(x){
+      if(x.d && x.d.ok){ load(); return; }
+      if(x.s===401){ alert('您的登入已逾時，請重新登入後再操作。'); location.href='/admin/'+ORG+'/login'; return; }
+      if(x.d && x.d.detail){ try{ console.log('detail:', x.d.detail); }catch(e){} }
+      alert(failMsg+'，請重新整理頁面後再試；若持續發生請聯繫系統管理員。');
+    })
+    .catch(function(){ alert(failMsg+'，請檢查網路後再試。'); });
+}
+function approve(pr){ if(!confirm('確定要核定這筆提交嗎？核定後將併入正式盤查資料。')) return; postAction(pr, '/approve', null, '核定失敗'); }
+function reject(pr){ var reason=prompt('退件原因（會顯示給供應商）：'); if(reason===null) return; postAction(pr, '/reject', {reason:reason}, '退件失敗'); }
 function rowHtml(r){
   var head, body='';
   if(r.type==='withdrawal'){

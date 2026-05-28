@@ -153,7 +153,7 @@ function editFormHtml(org: string, token: string, supplierId: string, submission
   <input class="input" name="period" value="${esc(d.period)}" required pattern="\\d{4}-Q[1-4]">
   <label class="label">活動類型</label>
   <select class="select" name="activity_type" id="activity_type" required>
-    ${['electricity','natural_gas','diesel','water','waste','product','transport'].map((a)=>`<option value="${a}" ${d.activity_type===a?'selected':''}>${a}</option>`).join('')}
+    ${([['electricity','電力 (Electricity)'],['natural_gas','天然氣 (Natural Gas)'],['diesel','柴油 (Diesel)'],['water','用水 (Water)'],['waste','廢棄物 (Waste)'],['product','產品 (Product)'],['transport','運輸 (Transport)']] as [string,string][]).map(([v,label])=>`<option value="${v}" ${d.activity_type===v?'selected':''}>${label}</option>`).join('')}
   </select>
   <div class="row">
     <div><label class="label">數量</label><input class="input" name="amount" type="number" step="any" value="${esc(d.amount)}" required></div>
@@ -286,7 +286,7 @@ submit.post('/:org/:token/withdraw', async (c) => {
     const mainSha = await getMainSha(octokit, org);
     await createBranch(octokit, org, wbranch, mainSha);
     await deleteFileViaBranch(octokit, org, wbranch, path, sha, `withdraw: ${tokenRow.supplierId} ${submissionId}`);
-    await openPullRequest(octokit, org, wbranch, `[撤回] ${tokenRow.supplierId} ${submissionId}`, '供應商要求撤回此筆已核定提交，請盤查員確認後 merge。');
+    await openPullRequest(octokit, org, wbranch, `[撤回] ${tokenRow.supplierId} ${submissionId}`, '供應商要求撤回此筆已核定提交，請盤查員確認後核定。');
   }
   return c.redirect(`/submit/${org}/${token}`);
 });

@@ -130,7 +130,7 @@ describe('admin API auth', () => {
     const res = await app.request('/api/v1/admin/acme/review/7/approve', { method: 'POST', headers: { Cookie: await sessionCookie('acme') } }, env as any);
     expect(res.status).toBe(409);
     const body = await res.json<{ error: string }>();
-    expect(body.error).toBe('merge failed');
+    expect(body.error).toBe('核定失敗');
   });
 
   it('POST /:org/review/:pr/reject adds label + comment with reason', async () => {

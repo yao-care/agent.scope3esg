@@ -63,7 +63,7 @@ function loadDash(){
   fetch('/api/v1/admin/'+ORG+'/dashboard-data'+(y?'?year='+encodeURIComponent(y):'')).then(function(r){return r.json();}).then(function(k){
     document.getElementById('subtitle').textContent='共 '+k.submissionCount+' 筆已核定資料 ｜ 更新於 '+new Date().toLocaleString('zh-TW');
     var cards=[
-      {label:'Total Scope 3', value:fmt(k.totalCo2e/1000), unit:'tCO₂e'},
+      {label:'Scope 3 總排放', value:fmt(k.totalCo2e/1000), unit:'tCO₂e'},
       {label:'供應商數', value:k.supplierCount, unit:'家'},
       {label:'已核定筆數', value:k.submissionCount, unit:'筆'},
       {label:'涵蓋類別數', value:Object.keys(k.byCategory).length, unit:'類'}

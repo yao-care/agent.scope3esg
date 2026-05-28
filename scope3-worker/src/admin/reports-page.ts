@@ -29,7 +29,7 @@ function setDl(){ var y=document.getElementById('year').value; document.getEleme
 function loadData(){
   var y=document.getElementById('year').value;
   fetch('/api/v1/admin/'+ORG+'/dashboard-data'+(y?'?year='+encodeURIComponent(y):'')).then(function(r){return r.json();}).then(function(k){
-    document.getElementById('kpis').innerHTML='<div class="card"><div class="muted">Total Scope 3</div><div class="kpi-value">'+fmt(k.totalCo2e/1000)+' <span class="kpi-unit">tCO₂e</span></div></div>'+
+    document.getElementById('kpis').innerHTML='<div class="card"><div class="muted">Scope 3 總排放</div><div class="kpi-value">'+fmt(k.totalCo2e/1000)+' <span class="kpi-unit">tCO₂e</span></div></div>'+
       '<div class="card"><div class="muted">已核定筆數</div><div class="kpi-value">'+k.submissionCount+' <span class="kpi-unit">筆</span></div></div>';
     bars('by-category', Object.keys(k.byCategory).map(function(cat){return {name:'Cat.'+cat+' '+(CAT_NAMES[cat-1]||''), value:k.byCategory[cat]};}).sort(function(a,b){return b.value-a.value;}));
     setDl();

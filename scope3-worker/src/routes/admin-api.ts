@@ -53,7 +53,7 @@ adminApi.use('/:org/*', requireSession);
 adminApi.get('/:org/config', async (c) => {
   const { org } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
   const config = await readTenantConfig(octokit, org);
   return c.json(config ?? { inventory_year: new Date().getFullYear(), enabled_categories: [], suppliers: [] });
@@ -62,7 +62,7 @@ adminApi.get('/:org/config', async (c) => {
 adminApi.put('/:org/config', async (c) => {
   const { org } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const incoming = await c.req.json<TenantConfig>();
   const yaml = configToYaml(incoming);
 
@@ -95,7 +95,7 @@ adminApi.get('/:org/links', async (c) => {
 adminApi.get('/:org/submissions', async (c) => {
   const { org } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
 
   // 待審來自 open PR（分支 sub/{supplierId}/{submissionId}）
@@ -115,7 +115,7 @@ adminApi.get('/:org/submissions', async (c) => {
 adminApi.get('/:org/overview', async (c) => {
   const { org } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
   const config = await readTenantConfig(octokit, org) ?? { inventory_year: new Date().getFullYear(), enabled_categories: [], suppliers: [] };
 
@@ -188,21 +188,21 @@ adminApi.get('/:org/review/list', async (c) => {
 adminApi.post('/:org/review/:pr/approve', async (c) => {
   const { org, pr } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
   try {
     await mergePullRequest(octokit, org, Number(pr));
     await insertAuditLog(c.env.DB, { org, action: 'submission_approved', actor: 'manager', target: `pr#${pr}` });
     return c.json({ ok: true });
   } catch (e) {
-    return c.json({ error: 'merge failed', detail: String((e as { message?: string }).message ?? e) }, 409);
+    return c.json({ error: '核定失敗', detail: String((e as { message?: string }).message ?? e) }, 409);
   }
 });
 
 adminApi.post('/:org/review/:pr/reject', async (c) => {
   const { org, pr } = c.req.param();
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const body = await c.req.json<{ reason?: string }>().catch(() => ({ reason: '' }));
   const reason = (body.reason ?? '').trim() || '（未填理由）';
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
@@ -216,7 +216,7 @@ adminApi.get('/:org/dashboard-data', async (c) => {
   const { org } = c.req.param();
   const year = c.req.query('year');
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
   const all = await readAggregatedSubmissions(octokit, org);
   const availableYears = [...new Set(all.map((s: any) => String(s.period ?? '').slice(0, 4)).filter(Boolean))].sort();
@@ -229,7 +229,7 @@ adminApi.get('/:org/reports', async (c) => {
   const year = c.req.query('year');
   const format = c.req.query('format') ?? 'md';
   const tenant = await getTenantByOrg(c.env.DB, org);
-  if (!tenant) return c.json({ error: 'unknown org' }, 404);
+  if (!tenant) return c.json({ error: '找不到組織' }, 404);
   const octokit = await getInstallationOctokit(c.env, tenant.installationId);
   const all = await readAggregatedSubmissions(octokit, org);
   const submissions = year ? all.filter((s: any) => String(s.period ?? '').slice(0, 4) === year) : all;

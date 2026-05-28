@@ -26,7 +26,7 @@ ${renderNav(org, 'config')}
 
 <section class="card">
   <h2>② 供應商</h2>
-  <table class="table"><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>Pull API</th><th>排程</th><th>Pull 金鑰</th><th>填表連結</th><th>已提交</th><th></th></tr></thead>
+  <table class="table"><thead><tr><th>ID</th><th>名稱</th><th>聯絡 Email</th><th>自動拉取網址</th><th>排程</th><th>拉取金鑰</th><th>填表連結</th><th>已提交</th><th></th></tr></thead>
   <tbody id="suppliers"></tbody></table>
   <p><button class="btn btn-secondary" id="addRow">+ 新增供應商</button></p>
   <p><button class="btn btn-primary" id="save">💾 儲存設定</button> <span id="saveStatus" class="muted"></span></p>
