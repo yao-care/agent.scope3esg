@@ -13,8 +13,12 @@ import assetsRoute     from './routes/assets';
 import dashboardRoute  from './routes/dashboard';
 import { handleQueue } from './queue/consumer';
 import { handleScheduled } from './handlers/scheduled';
+import { securityHeaders } from './middleware/security-headers';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+// 安全標頭：對所有 HTML 回應補上 CSP / 防點擊劫持 / nosniff / Referrer-Policy。
+app.use('*', securityHeaders());
 
 app.route('/webhook',       webhookRoute);
 app.route('/health',        healthRoute);
