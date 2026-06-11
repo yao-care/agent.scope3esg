@@ -1,0 +1,9 @@
+# ZAP scan rules — agent.scope3esg（Cloudflare Worker）
+# Worker 已加安全標頭（CSP / X-Frame-Options 等，見 PR #1）。下列為固有限制，
+# 經資安負責人 2026-06-11 簽核風險接受。
+# 格式：ruleId<TAB>action<TAB>url-regex（全站用 .*，不可留空）
+#
+# CSP style-src unsafe-inline：頁面含 inline <style>、無 nonce 機制故保留 unsafe-inline；ESG 後端工具、殘餘風險低
+10055	IGNORE	.*
+# Sub Resource Integrity：站內資源全自託管、無外部子資源，CSP default-src 'self' 已等效防護，SRI 不適用
+90003	IGNORE	.*
