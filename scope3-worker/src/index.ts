@@ -17,7 +17,7 @@ import { securityHeaders } from './middleware/security-headers';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// 安全標頭：對所有 HTML 回應補上 CSP / 防點擊劫持 / nosniff / Referrer-Policy。
+// 全站安全標頭，必須在所有路由之前掛上。
 app.use('*', securityHeaders());
 
 app.route('/webhook',       webhookRoute);
