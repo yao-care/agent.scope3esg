@@ -19,8 +19,8 @@
     "@octokit/app": "^16.1.2",
     "@octokit/core": "^7.0.6",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.23",
-    "js-yaml": "^4.1.1",
+    "hono": "^4.12.30",
+    "js-yaml": "^4.3.0",
     "resend": "^6.12.3"
   },
   "devDependencies": {
