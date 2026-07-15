@@ -74,6 +74,19 @@ describe('securityHeaders', () => {
     expect(res.headers.get('X-Frame-Options')).toBeNull();
   });
 
+  // ZAP 報 Storable and Cacheable Content：HTML 頁面帶供應商資料與登入態，
+  // 不可被共用快取（proxy / 瀏覽器上一頁）留存。
+  it('marks HTML pages as no-store so sensitive pages are not cached', async () => {
+    const res = await makeApp().request('/page');
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  // 靜態資源（app.css）要能快取，不可被 no-store 誤傷。
+  it('does not force no-store on non-HTML responses', async () => {
+    const res = await makeApp().request('/plain.txt');
+    expect(res.headers.get('Cache-Control')).toBeNull();
+  });
+
   it('leaves the response body and status untouched', async () => {
     const res = await makeApp().request('/page');
     expect(res.status).toBe(200);

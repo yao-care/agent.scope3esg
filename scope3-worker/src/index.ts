@@ -20,6 +20,11 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 // 全站安全標頭，必須在所有路由之前掛上。
 app.use('*', securityHeaders());
 
+// workers.dev 預設由 Cloudflare 平台層回 robots.txt（content-signals 樣板），那個回應
+// 不進 Worker，因此拿不到上面的安全標頭。自己提供就能蓋掉平台預設並補上標頭。
+// 內容為全站 Disallow：/admin 需登入、/submit 需 token，本站無公開內容可供索引。
+app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n'));
+
 app.route('/webhook',       webhookRoute);
 app.route('/health',        healthRoute);
 app.route('/api/v1/upload', uploadRoute);

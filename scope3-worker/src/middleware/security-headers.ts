@@ -52,10 +52,17 @@ const ALWAYS: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
 };
 
-/** 只對 HTML document 有意義的標頭。 */
+/**
+ * 只對 HTML document 有意義的標頭。
+ *
+ * Cache-Control: no-store —— admin/dashboard/submit 頁面直接內嵌供應商資料與登入態，
+ * 不可留在共用快取或瀏覽器上一頁（ZAP 報 Storable and Cacheable Content）。
+ * 只掛在 HTML 上，靜態資源（app.css）才能維持可快取。
+ */
 const HTML_ONLY: Record<string, string> = {
   'Content-Security-Policy': CSP,
   'X-Frame-Options': 'DENY',
+  'Cache-Control': 'no-store',
 };
 
 /**
