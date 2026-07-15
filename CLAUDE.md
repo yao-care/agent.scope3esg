@@ -53,8 +53,9 @@ curl https://scope3-worker.lightman-chang.workers.dev/health
 
 ## 文件地圖
 
-- `docs/維運手冊/` — 分層維運手冊（架構、環境、除錯、操作）
+- `docs/維運手冊/` — 分層維運手冊（架構、環境、除錯、操作、**05 安全掃描報告判讀**）
 - `docs/SETUP-手動授權步驟.md` — GitHub App / R2 / secret 設定步驟
+- `docs/QC掃描系統-問題回報.md` — **給 QC 掃描系統維護者的待辦**（掃描器是別套系統，我方改不到；此檔是交接用）。**未結案**：P1-1 ZAP scope 未限制、P1-2 WARNING→High 映射
 - `docs/superpowers/specs/` — 設計 spec ｜ `docs/superpowers/plans/` — 實作計畫（Plan 1–5）
 
 ## 端到端流程（一句話）
