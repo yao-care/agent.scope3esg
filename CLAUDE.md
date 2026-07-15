@@ -11,6 +11,7 @@
 3. **`gh`/`curl` 查詢回 404 或 EOF/ECONNRESET** → 這台機器對外網路**很不穩**，常是假失敗。**別信單次查詢結果**；wrangler/gh/curl 一律包重試迴圈，且加 `dangerouslyDisableSandbox: true`（沙箱會擋對外連線）。
 4. **重複安裝 / webhook 重送** → `createTenantRepo`（repo 已存在）與 `insertTenant`（主鍵衝突）已改為 idempotent。若再遇衝突先確認這兩處邏輯沒被改壞。
 5. **既有租戶 repo 缺新模板檔** → `createTenantRepo` 對「已存在的 repo」是 idempotent 跳過，**不會補新增的模板檔**。在 `tenant-template/` 新增檔案後，既有 repo 需手動補（用 `gh api PUT contents`）。
+6. **收到安全掃描報告 / Quality Gate FAIL** → **先讀 `docs/維運手冊/05-安全掃描報告判讀.md`，別從症狀重新分析**。已知：ZAP 跟著 302 爬去 github.com 產生 4 類誤報（含整份 SEO 報告）；Gate 的 High 多半是 Semgrep `[WARNING]` 被升級成 High；robots.txt 由 Cloudflare 平台層回、不進 Worker。**動手前先 `git fetch origin main`**——2026-07-15 有過「remote 已有人修同一份報告」導致 push 被 reject 的案例。
 
 ## 環境關鍵值（事實，不要猜）
 
