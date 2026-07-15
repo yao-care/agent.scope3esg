@@ -5,11 +5,16 @@ import { createMiddleware } from 'hono/factory';
  *
  * 標頭分兩類，因為套用範圍不同：
  *
- * 1. ALWAYS — 每個回應都套，含 robots.txt / sitemap.xml / app.css / JSON API。
- *    ZAP 是對 /robots.txt 報 X-Content-Type-Options 缺失、對 5 個路由報 HSTS 缺失，
- *    所以這些標頭若只套 HTML 就修不掉（robots.txt 不是 text/html）。
+ * 1. ALWAYS — 每個經過本 Worker 的回應都套，含 app.css / JSON API / 404。
+ *    ZAP 對 5 個路由報 HSTS 缺失、對 sitemap.xml 一類非 HTML 回應報 nosniff 缺失，
+ *    這些若只套 text/html 就修不掉，所以不看 content-type 一律送。
  *
  * 2. HTML_ONLY — 只對 HTML document 有意義的標頭；套在 CSS/JSON 上沒有作用。
+ *
+ * ⚠️ /robots.txt 不在本 middleware 的守備範圍：workers.dev 由 Cloudflare 平台層
+ * 直接回應 robots.txt（content-signals 樣板），根本不進 Worker。2026-07-15 實測
+ * 確認它裸奔無標頭，而同樣不存在的 /sitemap.xml 回 404 時標頭齊全——差別就在
+ * 前者沒進來。ZAP 對 robots.txt 報的 nosniff 缺失因此改不掉，屬平台限制。
  *
  * CSP 範圍說明：
  * - 本站所有資源皆自託管（無外部 CDN / 字型 / 樣式表），故 default-src 鎖 'self'。

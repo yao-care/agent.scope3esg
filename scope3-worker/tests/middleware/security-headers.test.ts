@@ -6,7 +6,7 @@ function makeApp() {
   const app = new Hono();
   app.use('*', securityHeaders());
   app.get('/page', (c) => c.html('<h1>hi</h1>'));
-  app.get('/robots.txt', (c) => c.text('User-agent: *'));
+  app.get('/plain.txt', (c) => c.text('not html'));
   app.get('/boom', (c) => c.text('nope', 404));
   return app;
 }
@@ -58,10 +58,10 @@ describe('securityHeaders', () => {
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
   });
 
-  // ZAP 是對 /robots.txt 報 X-Content-Type-Options 缺失。若標頭只套 text/html
-  // 就修不掉這條，所以這裡明確釘住非 HTML 回應也要有 nosniff 與 HSTS。
-  it('sets nosniff and HSTS on non-HTML responses such as robots.txt', async () => {
-    const res = await makeApp().request('/robots.txt');
+  // ZAP 對非 HTML 回應（sitemap.xml、app.css 等）也報 nosniff/HSTS 缺失。
+  // 標頭若只套 text/html 就修不掉這些，所以這裡釘住非 HTML 回應同樣要有。
+  it('sets nosniff and HSTS on non-HTML responses', async () => {
+    const res = await makeApp().request('/plain.txt');
     expect(res.headers.get('content-type')).not.toContain('text/html');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(res.headers.get('Strict-Transport-Security')).toContain('max-age=63072000');
@@ -69,7 +69,7 @@ describe('securityHeaders', () => {
 
   // CSP / X-Frame-Options 對非 document 回應沒有意義，不必送。
   it('does not set CSP on non-HTML responses', async () => {
-    const res = await makeApp().request('/robots.txt');
+    const res = await makeApp().request('/plain.txt');
     expect(res.headers.get('Content-Security-Policy')).toBeNull();
     expect(res.headers.get('X-Frame-Options')).toBeNull();
   });
